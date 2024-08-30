@@ -19,6 +19,8 @@
 
 
 
+		status:
+		<div id="status"></div>
 
 
 		<div hx-ext="ws" ws-connect="/ws">
@@ -30,8 +32,6 @@
 		count:
 		<div id="count"></div>
 
-		status:
-		<div id="status"></div>
 
 		artist:
 		<div id="artist-name"></div>
@@ -53,6 +53,9 @@
 				<input name="chat_message">
 			</form>
 		</div>
+
+<button hx-get="/control/prev" hx-swap="none"> Previous Station </button>
+<button hx-get="/control/next" hx-swap="none"> Next Station </button>
 
 
 
@@ -99,7 +102,7 @@
 
 
 		<audio controls>
-			<source src="/station/hirschmilch-psytrance" type="audio/mpeg">
+			<source src="/station/0" type="audio/mpeg">
 		</audio>
 
 

@@ -27,7 +27,6 @@ type RadioStationMetadata struct {
 type RadioStation struct {
 	Url         string
 	Name        string
-	Slug        string
 	CurrentMeta RadioStationMetadata
 }
 
@@ -37,7 +36,6 @@ var Stations RadioStations = []RadioStation{
 	{
 		Url:  "https://hirschmilch.de:7000/psytrance.mp3",
 		Name: "Hirschmilch Psytrance",
-		Slug: "hirschmilch-psytrance",
 
 		CurrentMeta: RadioStationMetadata{
 			ArtistName: "TODOArtist",
@@ -45,11 +43,17 @@ var Stations RadioStations = []RadioStation{
 			Updated:    time.Now(),
 		},
 	},
-}
 
-func (s RadioStations) BySlug(slug string) RadioStation{
-	// TODO implement
-	return Stations[0]
+	{
+		Url:  "https://hirschmilch.de:7000/progressive.mp3",
+		Name: "Hirschmilch Progressive",
+
+		CurrentMeta: RadioStationMetadata{
+			ArtistName: "TODOArtist",
+			TrackName:  "TODOTrackname",
+			Updated:    time.Now(),
+		},
+	},
 }
 
 func (s *RadioStations) Update() {
@@ -99,13 +103,14 @@ func main() {
 		c.File("index.html")
 	})
 
-	router.POST("/playercontrol", handlePlayerControl)
+	router.GET("/control/:action", handlePlayerControl)
 
-	// router.GET("/audio.mp3", handleAudioStream)
-	router.GET("/station/:name", handleRadioStations)
+	router.GET("/station/:index", handleRadioStations)
 
 	// Handle WebSocket connections
 	router.GET("/ws", func(c *gin.Context) {
+
+
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
 			// panic(err)
@@ -119,6 +124,11 @@ func main() {
 		// var metadataTemplate = template.Must(template.ParseFiles("./templates/metadata.html"))
 
 		for {
+
+
+		stationIndex := c.GetInt("station-index")
+		log.Println("user station is", stationIndex)
+		userStation := Stations[stationIndex]
 
 			// Read message from client
 			// messageType, p, err := conn.ReadMessage()
@@ -143,16 +153,14 @@ func main() {
 
 			data := struct {
 				Count       string
-				Status      string
 				ArtistName  string
 				TrackName   string
 				StationName string
 			}{
-				Count:       "test" + strconv.Itoa(msgCount),
-				Status:      "test" + strconv.Itoa(msgCount),
-				ArtistName:  "test" + strconv.Itoa(msgCount),
-				TrackName:   "test" + strconv.Itoa(msgCount),
-				StationName: "test" + strconv.Itoa(msgCount),
+				Count:       strconv.Itoa(msgCount),
+				TrackName:   userStation.CurrentMeta.TrackName,
+				ArtistName:  userStation.CurrentMeta.ArtistName,
+				StationName: userStation.Name,
 			}
 
 			err = tmpl.Execute(&renderedMetadata, data)
@@ -184,15 +192,35 @@ func main() {
 }
 
 func handlePlayerControl(c *gin.Context) {
-	//TODO
+	action := c.Param("action")
+	stationIndex := c.GetInt("station-index")
+
+	if action == "next" {
+		c.Set("station-index", (stationIndex+1)%len(Stations))
+	}
+	if action == "previous" {
+		c.Set("station-index", (stationIndex-1)%len(Stations))
+	}
+
+
+	log.Println("index is now", c.GetInt("station-index"))
+
+		c.File("index.html")
+
+
 }
 
 func handleRadioStations(c *gin.Context) {
-	name := c.Param("name")
 
-	// TODO check for errrors
-	streamUrl := Stations.BySlug(name)
+    streamIndex, err := strconv.Atoi(c.Param("index"))
+    if err != nil || streamIndex >= len(Stations){
 
+		log.Println("faild to switch to station", streamIndex, "lengte", len(Stations))
+
+		return
+    }
+
+	streamUrl := Stations[streamIndex]
 
 	read, write := io.Pipe()
 
@@ -209,19 +237,3 @@ func handleRadioStations(c *gin.Context) {
 	io.Copy(c.Writer, read)
 
 }
-
-// func handleAudioStream(c *gin.Context) {
-// 	read, write := io.Pipe()
-//
-// 	go func() {
-// 		defer write.Close()
-// 		resp, err := http.Get(hirschStreamUrl)
-// 		if err != nil {
-// 			return
-// 		}
-// 		defer resp.Body.Close()
-// 		io.Copy(write, resp.Body)
-// 	}()
-//
-// 	io.Copy(c.Writer, read)
-// }
