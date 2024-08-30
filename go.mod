@@ -1,10 +1,11 @@
 module testwebsocket
 
-go 1.19
+go 1.22.5
 
 require (
 	github.com/gin-gonic/gin v1.9.0
 	github.com/gorilla/websocket v1.5.0
+	github.com/inspectorgoget/icymeta v0.1.0
 )
 
 require (

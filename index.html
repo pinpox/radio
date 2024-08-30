@@ -1,41 +1,133 @@
 <!DOCTYPE html>
 <html>
-<head>
-	<title>WebSocket Echo Test</title>
-</head>
-<body>
-	<h1>WebSocket Echo Test</h1>
+	<head>
+		<title>WebSocket Echo Test</title>
 
- <audio controls>
-  <source src="/audio.mp3" type="audio/mpeg">
-</audio> 
+		<script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
+		<script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/ws.js"></script>
 
 
+		<link rel="stylesheet" href="static/style.css">
 
-	<input type="text" id="message" placeholder="Type a message...">
-	<button onclick="sendMessage()">Send</button>
-	<hr>
-	<div id="output"></div>
 
-	<script>
-    let secure = window.location.protocol.includes('https') ? 's':'';
-		var socket = new WebSocket("ws"+secure+"://" + window.location.host + "/ws");
-		
-		socket.onopen = function(event) {
-			console.log("WebSocket connected!");
-		}
+	</head>
+	<body>
+		<h1>WebSocket Echo Test</h1>
 
-		socket.onmessage = function(event) {
-			console.log("Received message:", event.data);
-			document.getElementById("output").innerHTML += event.data + "<br>";
-		}
 
-		function sendMessage() {
-			var message = document.getElementById("message").value;
-			socket.send(message);
-			document.getElementById("message").value = "";
-			console.log("Sent message:", message);
-		}
-	</script>
-</body>
+
+
+
+
+
+
+		<div hx-ext="ws" ws-connect="/ws">
+
+
+
+
+
+		count:
+		<div id="count"></div>
+
+		status:
+		<div id="status"></div>
+
+		artist:
+		<div id="artist-name"></div>
+
+		trackname:
+		<div id="track-name"></div>
+
+		stationname:
+		<div id="station-name"></div>
+
+
+
+			<div id="notifications"></div>
+			<div id="artist"></div>
+			<div id="chat_room">
+				...
+			</div>
+			<form id="form" ws-send>
+				<input name="chat_message">
+			</form>
+		</div>
+
+
+
+
+		<script type="text/javascript" defer>
+			let status = document.getElementById('status');
+
+			// htmx:wsConnecting
+			// htmx:wsError
+
+			let socket;
+			let elt;
+
+			document.addEventListener("visibilitychange", function(evt) {
+				console.log('visibilitychange', document.visibilityState);
+				if (socket) {
+					socket.send(document.visibilityState, elt);
+				}
+			});
+
+			document.body.addEventListener('htmx:wsAfterMessage', function(evt) {
+				console.log('message in htmx');
+				console.log(evt.detail.message);
+				console.log('message in htmx end');
+
+			});
+
+			document.body.addEventListener('htmx:wsOpen', function(evt) {
+				console.log('connected');
+
+				socket = evt.detail.socketWrapper;
+				elt = evt.detail.elt;
+
+				status.innerText = 'Connected';
+				status.setAttribute('data-status', 'connected');
+			});
+			document.body.addEventListener('htmx:wsClose', function(evt) {
+				console.log('disconnected');
+				status.innerText = 'Disconnected';
+				status.setAttribute('data-status', 'disconnected');
+			});
+		</script>
+
+
+
+		<audio controls>
+			<source src="/audio.mp3" type="audio/mpeg">
+		</audio>
+
+
+
+		<input type="text" id="message" placeholder="Type a message...">
+		<button onclick="sendMessage()">Send</button>
+		<hr>
+		<div id="output"></div>
+
+		<script>
+			let secure = window.location.protocol.includes('https') ? 's':'';
+			var socket2 = new WebSocket("ws"+secure+"://" + window.location.host + "/ws");
+
+			socket2.onopen = function(event) {
+				console.log("WebSocket connected!");
+			}
+
+			//socket2.onmessage = function(event) {
+				//	console.log("Received message:", event.data);
+				//	document.getElementById("output").innerHTML += event.data + "<br>";
+				//}
+
+			function sendMessage() {
+				var message = document.getElementById("message").value;
+				socket2.send(message);
+				document.getElementById("message").value = "";
+				console.log("Sent message:", message);
+			}
+		</script>
+	</body>
 </html>
