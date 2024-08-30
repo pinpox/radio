@@ -47,14 +47,16 @@ var Stations RadioStations = []RadioStation{
 	},
 }
 
+func (s RadioStations) BySlug(slug string) RadioStation{
+	// TODO implement
+	return Stations[0]
+}
 
+func (s *RadioStations) Update() {
 
+	// TODO implement, this is a placeholder!
 
-func (s *RadioStations) Update()  {
-
-	// TODO
-var hirschStreamUrl string = "https://hirschmilch.de:7000/psytrance.mp3"
-	title, err := icymeta.GetCurrentStreamTitle(context.Background(), hirschStreamUrl)
+	title, err := icymeta.GetCurrentStreamTitle(context.Background(), Stations[0].Url)
 	// icymeta.ReadMeta()
 
 	if err != nil {
@@ -63,9 +65,7 @@ var hirschStreamUrl string = "https://hirschmilch.de:7000/psytrance.mp3"
 
 	log.Printf("Current stream title: %s\n", title)
 
-	
 }
-
 
 var (
 	address string
@@ -87,7 +87,6 @@ func main() {
 
 	Stations.Update()
 
-
 	var err error
 	flag.Parse()
 
@@ -102,7 +101,7 @@ func main() {
 
 	router.POST("/playercontrol", handlePlayerControl)
 
-	router.GET("/audio.mp3", handleAudioStream)
+	// router.GET("/audio.mp3", handleAudioStream)
 	router.GET("/station/:name", handleRadioStations)
 
 	// Handle WebSocket connections
@@ -188,16 +187,18 @@ func handlePlayerControl(c *gin.Context) {
 	//TODO
 }
 
-
 func handleRadioStations(c *gin.Context) {
-		name := c.Param("name")
+	name := c.Param("name")
+
+	// TODO check for errrors
+	streamUrl := Stations.BySlug(name)
 
 
 	read, write := io.Pipe()
 
 	go func() {
 		defer write.Close()
-		resp, err := http.Get(hirschStreamUrl)
+		resp, err := http.Get(streamUrl.Url)
 		if err != nil {
 			return
 		}
@@ -209,18 +210,18 @@ func handleRadioStations(c *gin.Context) {
 
 }
 
-func handleAudioStream(c *gin.Context) {
-	read, write := io.Pipe()
-
-	go func() {
-		defer write.Close()
-		resp, err := http.Get(hirschStreamUrl)
-		if err != nil {
-			return
-		}
-		defer resp.Body.Close()
-		io.Copy(write, resp.Body)
-	}()
-
-	io.Copy(c.Writer, read)
-}
+// func handleAudioStream(c *gin.Context) {
+// 	read, write := io.Pipe()
+//
+// 	go func() {
+// 		defer write.Close()
+// 		resp, err := http.Get(hirschStreamUrl)
+// 		if err != nil {
+// 			return
+// 		}
+// 		defer resp.Body.Close()
+// 		io.Copy(write, resp.Body)
+// 	}()
+//
+// 	io.Copy(c.Writer, read)
+// }
