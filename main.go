@@ -172,49 +172,27 @@ func handleWebSocket(c *gin.Context) {
 			log.Println("received message", msg)
 			if msg == Next {
 				userStationIndex = (userStationIndex + 1) % len(Stations)
-				c.HTML(http.StatusOK, "templates/player.html", gin.H{"Url": userStationIndex})
+				err = sendTemplateWebsocket(conn, "templates/player.html", gin.H{"Url": userStationIndex})
+				//TODO check error
 			}
 			if msg == Previous {
 				userStationIndex = (userStationIndex - 1) % len(Stations)
-				c.HTML(http.StatusOK, "templates/player.html", gin.H{"Url": userStationIndex})
+				err = sendTemplateWebsocket(conn, "templates/player.html", gin.H{"Url": userStationIndex})
+				//TODO check error
 			}
 		default:
 			log.Println("no message received")
 		}
 
 		userStation := Stations[userStationIndex]
-
-		tmpl, err := template.ParseFiles("templates/metadata.html")
-		if err != nil {
-			log.Fatalf("template parsing: %s", err)
-		}
-
-		// Render the template with the message as data.
-		var renderedMetadata bytes.Buffer
-
-		data := struct {
-			Count       string
-			ArtistName  string
-			TrackName   string
-			StationName string
-		}{
-			Count:       strconv.Itoa(msgCount),
-			TrackName:   userStation.CurrentMeta.TrackName,
-			ArtistName:  userStation.CurrentMeta.ArtistName,
-			StationName: userStation.Name,
-		}
-
-		err = tmpl.Execute(&renderedMetadata, data)
-		if err != nil {
-			log.Fatalf("template execution: %s", err)
-		}
-
-		log.Println("writing message", renderedMetadata.String())
-
-		err = conn.WriteMessage(websocket.TextMessage, renderedMetadata.Bytes())
+		err = sendTemplateWebsocket(conn, "templates/metadata.html", gin.H{
+			"Count":       strconv.Itoa(msgCount),
+			"TrackName":   userStation.CurrentMeta.TrackName,
+			"ArtistName":  userStation.CurrentMeta.ArtistName,
+			"StationName": userStation.Name,
+		})
 
 		if err != nil {
-			// panic(err)
 			log.Printf("%s, error while writing message\n", err.Error())
 			c.AbortWithError(http.StatusInternalServerError, err)
 			break
@@ -223,6 +201,25 @@ func handleWebSocket(c *gin.Context) {
 		msgCount += 1
 		time.Sleep(time.Second * 2)
 	}
+}
+
+func sendTemplateWebsocket(conn *websocket.Conn, templateName string, data gin.H) error {
+
+	tmpl, err := template.ParseFiles(templateName)
+	if err != nil {
+		log.Fatalf("template parsing: %s", err)
+	}
+
+	// Render the template with the message as data.
+	var renderedMetadata bytes.Buffer
+
+	err = tmpl.Execute(&renderedMetadata, data)
+	if err != nil {
+		log.Fatalf("template execution: %s", err)
+	}
+
+	log.Println("writing message", renderedMetadata.String())
+	return conn.WriteMessage(websocket.TextMessage, renderedMetadata.Bytes())
 }
 
 func handleRadioStations(c *gin.Context) {
