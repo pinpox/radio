@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	// "encoding/json"
 	"flag"
 	"html/template"
 	"io"
@@ -87,6 +88,14 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+type PlayerCommand int
+
+const (
+	Next PlayerCommand = iota
+	Previous
+	// Pause
+)
+
 func main() {
 
 	Stations.Update()
@@ -96,42 +105,41 @@ func main() {
 
 	router := gin.Default()
 
+	router.LoadHTMLGlob("templates/*")
+
 	router.Static("/static", "./static")
-
-	// Serve HTML page to trigger connection
-	router.GET("/", func(c *gin.Context) {
-		c.File("index.html")
-	})
-
-	router.GET("/control/:action", handlePlayerControl)
-
+	router.GET("/", func(c *gin.Context) { c.File("index.html") })
 	router.GET("/station/:index", handleRadioStations)
+	router.GET("/ws", handleWebSocket)
 
-	// Handle WebSocket connections
-	router.GET("/ws", func(c *gin.Context) {
+	err = router.Run(address)
+	if err != nil {
+		log.Println("server paniced. Doh!")
+		panic(err)
+	}
+}
 
+func handleWebSocket(c *gin.Context) {
 
-		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-		if err != nil {
-			// panic(err)
-			log.Printf("%s, error while Upgrading websocket connection\n", err.Error())
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		// panic(err)
+		log.Printf("%s, error while Upgrading websocket connection\n", err.Error())
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
 
-		msgCount := 0
+	msgCount := 0
 
-		// var metadataTemplate = template.Must(template.ParseFiles("./templates/metadata.html"))
+	messages := make(chan PlayerCommand)
+	userStationIndex := 0
 
+	// Read messages from client to control the player
+	go func() {
 		for {
 
-
-		stationIndex := c.GetInt("station-index")
-		log.Println("user station is", stationIndex)
-		userStation := Stations[stationIndex]
-
 			// Read message from client
-			// messageType, p, err := conn.ReadMessage()
+			// _, p, err := conn.ReadMessage()
 			// if err != nil {
 			// 	// panic(err)
 			// 	log.Printf("%s, error while reading message\n", err.Error())
@@ -139,86 +147,91 @@ func main() {
 			// 	break
 			// }
 
-			// newMsg := ` <div id="artist" hx-swap-oob="true"> Saved! ` + strconv.Itoa(msgCount) + ` </div> `
+			var jsonMsg gin.H
+			if err = conn.ReadJSON(&jsonMsg); err != nil {
+				log.Println("failed json parsing: %s", err)
+				return
+			} else {
+				if val, ok := jsonMsg["action"]; ok {
+					if val == "next" {
+						messages <- Next
+					}
 
-			// homeTemplate.Execute(w, r.Host)
-
-			tmpl, err := template.ParseFiles("templates/metadata.html")
-			if err != nil {
-				log.Fatalf("template parsing: %s", err)
+					if val == "previous" {
+						messages <- Previous
+					}
+				}
 			}
-
-			// Render the template with the message as data.
-			var renderedMetadata bytes.Buffer
-
-			data := struct {
-				Count       string
-				ArtistName  string
-				TrackName   string
-				StationName string
-			}{
-				Count:       strconv.Itoa(msgCount),
-				TrackName:   userStation.CurrentMeta.TrackName,
-				ArtistName:  userStation.CurrentMeta.ArtistName,
-				StationName: userStation.Name,
-			}
-
-			err = tmpl.Execute(&renderedMetadata, data)
-			if err != nil {
-				log.Fatalf("template execution: %s", err)
-			}
-
-			msgCount += 1
-
-			log.Println("writing message", renderedMetadata.String())
-
-			err = conn.WriteMessage(websocket.TextMessage, renderedMetadata.Bytes())
-
-			if err != nil {
-				// panic(err)
-				log.Printf("%s, error while writing message\n", err.Error())
-				c.AbortWithError(http.StatusInternalServerError, err)
-				break
-			}
-
-			time.Sleep(time.Second * 2)
 		}
-	})
+	}()
 
-	err = router.Run(address)
-	if err != nil {
-		panic(err)
+	for {
+
+		select {
+		case msg := <-messages:
+			log.Println("received message", msg)
+			if msg == Next {
+				userStationIndex = (userStationIndex + 1) % len(Stations)
+				c.HTML(http.StatusOK, "templates/player.html", gin.H{"Url": userStationIndex})
+			}
+			if msg == Previous {
+				userStationIndex = (userStationIndex - 1) % len(Stations)
+				c.HTML(http.StatusOK, "templates/player.html", gin.H{"Url": userStationIndex})
+			}
+		default:
+			log.Println("no message received")
+		}
+
+		userStation := Stations[userStationIndex]
+
+		tmpl, err := template.ParseFiles("templates/metadata.html")
+		if err != nil {
+			log.Fatalf("template parsing: %s", err)
+		}
+
+		// Render the template with the message as data.
+		var renderedMetadata bytes.Buffer
+
+		data := struct {
+			Count       string
+			ArtistName  string
+			TrackName   string
+			StationName string
+		}{
+			Count:       strconv.Itoa(msgCount),
+			TrackName:   userStation.CurrentMeta.TrackName,
+			ArtistName:  userStation.CurrentMeta.ArtistName,
+			StationName: userStation.Name,
+		}
+
+		err = tmpl.Execute(&renderedMetadata, data)
+		if err != nil {
+			log.Fatalf("template execution: %s", err)
+		}
+
+		log.Println("writing message", renderedMetadata.String())
+
+		err = conn.WriteMessage(websocket.TextMessage, renderedMetadata.Bytes())
+
+		if err != nil {
+			// panic(err)
+			log.Printf("%s, error while writing message\n", err.Error())
+			c.AbortWithError(http.StatusInternalServerError, err)
+			break
+		}
+
+		msgCount += 1
+		time.Sleep(time.Second * 2)
 	}
-}
-
-func handlePlayerControl(c *gin.Context) {
-	action := c.Param("action")
-	stationIndex := c.GetInt("station-index")
-
-	if action == "next" {
-		c.Set("station-index", (stationIndex+1)%len(Stations))
-	}
-	if action == "previous" {
-		c.Set("station-index", (stationIndex-1)%len(Stations))
-	}
-
-
-	log.Println("index is now", c.GetInt("station-index"))
-
-		c.File("index.html")
-
-
 }
 
 func handleRadioStations(c *gin.Context) {
 
-    streamIndex, err := strconv.Atoi(c.Param("index"))
-    if err != nil || streamIndex >= len(Stations){
-
-		log.Println("faild to switch to station", streamIndex, "lengte", len(Stations))
-
+	streamIndex, err := strconv.Atoi(c.Param("index"))
+	if err != nil || streamIndex >= len(Stations) {
+		log.Println("Client tried to access invalid radio station:", streamIndex)
 		return
-    }
+	}
 
 	streamUrl := Stations[streamIndex]
 
