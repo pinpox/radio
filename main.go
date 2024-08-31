@@ -120,60 +120,40 @@ func main() {
 	}
 }
 
-func handleWebSocket(c *gin.Context) {
+func getControlMessages(messages chan PlayerCommand, conn *websocket.Conn) {
 
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		// panic(err)
-		log.Printf("%s, error while Upgrading websocket connection\n", err.Error())
-		c.AbortWithError(http.StatusInternalServerError, err)
-		return
-	}
+	for {
+		var jsonMsg gin.H
+		if err := conn.ReadJSON(&jsonMsg); err != nil {
+			log.Println("failed json parsing: %s", err)
+			return
+		} else {
+			if val, ok := jsonMsg["action"]; ok {
+				if val == "next" {
+					messages <- Next
+				}
 
-	msgCount := 0
-
-	messages := make(chan PlayerCommand)
-	userStationIndex := 0
-
-	// Read messages from client to control the player
-	go func() {
-		for {
-
-			// Read message from client
-			// _, p, err := conn.ReadMessage()
-			// if err != nil {
-			// 	// panic(err)
-			// 	log.Printf("%s, error while reading message\n", err.Error())
-			// 	c.AbortWithError(http.StatusInternalServerError, err)
-			// 	break
-			// }
-
-			var jsonMsg gin.H
-			if err = conn.ReadJSON(&jsonMsg); err != nil {
-				log.Println("failed json parsing: %s", err)
-				return
-			} else {
-				if val, ok := jsonMsg["action"]; ok {
-					if val == "next" {
-						messages <- Next
-					}
-
-					if val == "previous" {
-						messages <- Previous
-					}
+				if val == "previous" {
+					messages <- Previous
 				}
 			}
 		}
-	}()
+	}
+}
 
+func updateClient(messages chan PlayerCommand, conn *websocket.Conn) error {
+
+	msgCount := 0
+	userStationIndex := 0
 	for {
 
+		// Send new player if station changes
 		select {
 		case msg := <-messages:
 			log.Println("received message", msg)
 			if msg == Next {
 				userStationIndex = (userStationIndex + 1) % len(Stations)
-				err = sendTemplateWebsocket(conn, "templates/player.html", gin.H{"Url": userStationIndex})
+				err := sendTemplateWebsocket(conn, "templates/player.html", gin.H{"Url": userStationIndex})
 				if err != nil {
 					log.Println(err)
 					continue
@@ -181,7 +161,7 @@ func handleWebSocket(c *gin.Context) {
 			}
 			if msg == Previous {
 				userStationIndex = (len(Stations) + userStationIndex - 1) % len(Stations)
-				err = sendTemplateWebsocket(conn, "templates/player.html", gin.H{"Url": userStationIndex})
+				err := sendTemplateWebsocket(conn, "templates/player.html", gin.H{"Url": userStationIndex})
 				if err != nil {
 					log.Println(err)
 					continue
@@ -192,21 +172,40 @@ func handleWebSocket(c *gin.Context) {
 		}
 
 		userStation := Stations[userStationIndex]
-		err = sendTemplateWebsocket(conn, "templates/metadata.html", gin.H{
+		if err := sendTemplateWebsocket(conn, "templates/metadata.html", gin.H{
 			"Count":       strconv.Itoa(msgCount),
 			"TrackName":   userStation.CurrentMeta.TrackName,
 			"ArtistName":  userStation.CurrentMeta.ArtistName,
 			"StationName": userStation.Name,
-		})
-
-		if err != nil {
+		}); err != nil {
 			log.Printf("%s, error while writing message\n", err.Error())
-			c.AbortWithError(http.StatusInternalServerError, err)
-			break
+			return err
 		}
 
 		msgCount += 1
 		time.Sleep(time.Second * 2)
+
+	}
+}
+
+func handleWebSocket(c *gin.Context) {
+
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		// panic(err)
+		log.Printf("%s, error while Upgrading websocket connection\n", err.Error())
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	messages := make(chan PlayerCommand)
+
+	// Read messages from client to control the player
+	go getControlMessages(messages, conn)
+
+	// Update client player and metadata (blocking)
+	if err = updateClient(messages, conn); err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
 	}
 }
 
