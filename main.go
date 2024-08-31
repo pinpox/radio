@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	// "encoding/json"
 	"flag"
 	"html/template"
@@ -14,21 +13,30 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-
-	"github.com/inspectorgoget/icymeta"
 )
 
 type RadioStationMetadata struct {
 	// Bitrate string
-	ArtistName string
-	TrackName  string
-	Updated    time.Time
+	Title   string
+	Updated time.Time
 }
 
 type RadioStation struct {
 	Url         string
 	Name        string
-	CurrentMeta RadioStationMetadata
+	CurrentMeta *RadioStationMetadata
+}
+
+func (rs *RadioStation) Update() {
+
+	if title, err := rs.GetStreamTitle(); err != nil {
+		log.Println(err)
+	} else {
+		if rs.CurrentMeta.Title != title {
+			rs.CurrentMeta.Title = title
+			rs.CurrentMeta.Updated = time.Now()
+		}
+	}
 }
 
 type RadioStations []RadioStation
@@ -39,10 +47,9 @@ var Stations RadioStations = []RadioStation{
 		Url:  "https://hirschmilch.de:7000/psytrance.mp3",
 		Name: "Hirschmilch Psytrance",
 
-		CurrentMeta: RadioStationMetadata{
-			ArtistName: "TODOArtist",
-			TrackName:  "TODOTrackname",
-			Updated:    time.Now(),
+		CurrentMeta: &RadioStationMetadata{
+			Title:   "",
+			Updated: time.Now(),
 		},
 	},
 
@@ -50,27 +57,21 @@ var Stations RadioStations = []RadioStation{
 		Url:  "https://hirschmilch.de:7000/progressive.mp3",
 		Name: "Hirschmilch Progressive",
 
-		CurrentMeta: RadioStationMetadata{
-			ArtistName: "TODOArtist",
-			TrackName:  "TODOTrackname",
-			Updated:    time.Now(),
+		CurrentMeta: &RadioStationMetadata{
+			Title:   "",
+			Updated: time.Now(),
 		},
 	},
 }
 
 func (s *RadioStations) Update() {
+	for {
+		for _, v := range *s {
+			v.Update()
+		}
 
-	// TODO implement, this is a placeholder!
-
-	title, err := icymeta.GetCurrentStreamTitle(context.Background(), Stations[0].Url)
-	// icymeta.ReadMeta()
-
-	if err != nil {
-		panic(err)
+		time.Sleep(time.Second * 5)
 	}
-
-	log.Printf("Current stream title: %s\n", title)
-
 }
 
 var (
@@ -89,17 +90,9 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-type PlayerCommand int
-
-const (
-	Next PlayerCommand = iota
-	Previous
-	// Pause
-)
-
 func main() {
 
-	Stations.Update()
+	go Stations.Update()
 
 	var err error
 	flag.Parse()
@@ -120,92 +113,86 @@ func main() {
 	}
 }
 
-func getControlMessages(messages chan PlayerCommand, conn *websocket.Conn) {
+func updateClientPlayer(stationIndex chan int, conn *websocket.Conn) {
+
+	userStationIndex := 0
 
 	for {
 		var jsonMsg gin.H
 		if err := conn.ReadJSON(&jsonMsg); err != nil {
-			log.Println("failed json parsing: %s", err)
+			log.Println("failed json parsing: ", err)
 			return
 		} else {
 			if val, ok := jsonMsg["action"]; ok {
 				if val == "next" {
-					messages <- Next
+					userStationIndex = (userStationIndex + 1) % len(Stations)
 				}
 
 				if val == "previous" {
-					messages <- Previous
+					userStationIndex = (len(Stations) + userStationIndex - 1) % len(Stations)
 				}
+
+				log.Println("updating player")
+				if err := sendTemplateWebsocket(conn, "templates/player.html",
+					gin.H{"Url": userStationIndex}); err != nil {
+					log.Println(err)
+				}
+				stationIndex <- userStationIndex
 			}
 		}
 	}
 }
 
-func updateClient(messages chan PlayerCommand, conn *websocket.Conn) error {
+func updateClientMetadata(userStation RadioStation, conn *websocket.Conn) error {
 
-	msgCount := 0
-	userStationIndex := 0
-	for {
-
-		// Send new player if station changes
-		select {
-		case msg := <-messages:
-			log.Println("received message", msg)
-			if msg == Next {
-				userStationIndex = (userStationIndex + 1) % len(Stations)
-				err := sendTemplateWebsocket(conn, "templates/player.html", gin.H{"Url": userStationIndex})
-				if err != nil {
-					log.Println(err)
-					continue
-				}
-			}
-			if msg == Previous {
-				userStationIndex = (len(Stations) + userStationIndex - 1) % len(Stations)
-				err := sendTemplateWebsocket(conn, "templates/player.html", gin.H{"Url": userStationIndex})
-				if err != nil {
-					log.Println(err)
-					continue
-				}
-			}
-		default:
-			log.Println("no message received")
-		}
-
-		userStation := Stations[userStationIndex]
-		if err := sendTemplateWebsocket(conn, "templates/metadata.html", gin.H{
-			"Count":       strconv.Itoa(msgCount),
-			"TrackName":   userStation.CurrentMeta.TrackName,
-			"ArtistName":  userStation.CurrentMeta.ArtistName,
-			"StationName": userStation.Name,
-		}); err != nil {
-			log.Printf("%s, error while writing message\n", err.Error())
-			return err
-		}
-
-		msgCount += 1
-		time.Sleep(time.Second * 2)
-
+	if err := sendTemplateWebsocket(conn, "templates/metadata.html", gin.H{
+		"ArtistName":  userStation.CurrentMeta.Title,
+		"StationName": userStation.Name,
+	}); err != nil {
+		log.Printf("%s, error while writing message\n", err.Error())
+		return err
 	}
+	return nil
+
 }
 
 func handleWebSocket(c *gin.Context) {
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		// panic(err)
 		log.Printf("%s, error while Upgrading websocket connection\n", err.Error())
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
-	messages := make(chan PlayerCommand)
+	stationIndex := make(chan int)
 
 	// Read messages from client to control the player
-	go getControlMessages(messages, conn)
+	go updateClientPlayer(stationIndex, conn)
 
-	// Update client player and metadata (blocking)
-	if err = updateClient(messages, conn); err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+	// Keep updating client metadata periodically
+	userStation := Stations[0]
+	var lastMetaUpdate time.Time
+	for {
+
+		// Check if station has changed
+		select {
+		case i := <-stationIndex:
+			userStation = Stations[i]
+		default:
+			// fmt.Println("no message received")
+		}
+
+		// Update client's metadata if it's newer
+		if userStation.CurrentMeta.Updated.After(lastMetaUpdate) {
+			log.Println("TIME: PUDATING ")
+			if err = updateClientMetadata(userStation, conn); err != nil {
+				c.AbortWithError(http.StatusInternalServerError, err)
+			}
+			lastMetaUpdate = time.Now()
+		}
+
+		time.Sleep(time.Second * 2)
 	}
 }
 

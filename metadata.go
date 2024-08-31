@@ -1,3 +1,4 @@
+package main
 import (
 	"bufio"
 	"bytes"
@@ -7,8 +8,8 @@ import (
 )
 
 // GetStreamTitle get the current song/show in an Icecast stream
-func (r *Radio) GetStreamTitle(streamUrl string) (string, error) {
-	m, err := r.getStreamMetas(streamUrl)
+func (r RadioStation) GetStreamTitle() (string, error) {
+	m, err := r.getStreamMetas()
 
 	if err != nil {
 		return "", err
@@ -29,7 +30,14 @@ func (r *Radio) GetStreamTitle(streamUrl string) (string, error) {
 }
 
 // get stream metadatas
-func (r *Radio) getStreamMetas(streamUrl string) ([]byte, error) {
+func (r RadioStation) getStreamMetas() ([]byte, error) {
+
+
+	streamUrl := r.Url
+
+
+
+
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", streamUrl, nil)
 	req.Header.Set("Icy-MetaData", "1")
