@@ -33,6 +33,7 @@ type RadioStation struct {
 
 type RadioStations []RadioStation
 
+// TODO read from config file
 var Stations RadioStations = []RadioStation{
 	{
 		Url:  "https://hirschmilch.de:7000/psytrance.mp3",
@@ -173,12 +174,18 @@ func handleWebSocket(c *gin.Context) {
 			if msg == Next {
 				userStationIndex = (userStationIndex + 1) % len(Stations)
 				err = sendTemplateWebsocket(conn, "templates/player.html", gin.H{"Url": userStationIndex})
-				//TODO check error
+				if err != nil {
+					log.Println(err)
+					continue
+				}
 			}
 			if msg == Previous {
-				userStationIndex = (userStationIndex - 1) % len(Stations)
+				userStationIndex = (len(Stations) + userStationIndex - 1) % len(Stations)
 				err = sendTemplateWebsocket(conn, "templates/player.html", gin.H{"Url": userStationIndex})
-				//TODO check error
+				if err != nil {
+					log.Println(err)
+					continue
+				}
 			}
 		default:
 			log.Println("no message received")
