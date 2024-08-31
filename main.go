@@ -16,7 +16,6 @@ import (
 )
 
 type RadioStationMetadata struct {
-	// Bitrate string
 	Title   string
 	Updated time.Time
 }
@@ -108,7 +107,6 @@ func main() {
 
 	err = router.Run(address)
 	if err != nil {
-		log.Println("server paniced. Doh!")
 		panic(err)
 	}
 }
@@ -124,6 +122,10 @@ func updateClientPlayer(stationIndex chan int, conn *websocket.Conn) {
 			return
 		} else {
 			if val, ok := jsonMsg["action"]; ok {
+
+				// TODO implement messages
+
+
 				if val == "next" {
 					userStationIndex = (userStationIndex + 1) % len(Stations)
 				}
@@ -132,7 +134,6 @@ func updateClientPlayer(stationIndex chan int, conn *websocket.Conn) {
 					userStationIndex = (len(Stations) + userStationIndex - 1) % len(Stations)
 				}
 
-				log.Println("updating player")
 				if err := sendTemplateWebsocket(conn, "templates/player.html",
 					gin.H{"Url": userStationIndex}); err != nil {
 					log.Println(err)
@@ -146,7 +147,7 @@ func updateClientPlayer(stationIndex chan int, conn *websocket.Conn) {
 func updateClientMetadata(userStation RadioStation, conn *websocket.Conn) error {
 
 	if err := sendTemplateWebsocket(conn, "templates/metadata.html", gin.H{
-		"ArtistName":  userStation.CurrentMeta.Title,
+		"StationTitle":  userStation.CurrentMeta.Title,
 		"StationName": userStation.Name,
 	}); err != nil {
 		log.Printf("%s, error while writing message\n", err.Error())
@@ -179,13 +180,13 @@ func handleWebSocket(c *gin.Context) {
 		select {
 		case i := <-stationIndex:
 			userStation = Stations[i]
+			// Zero lastMetaUpdate to force update
+			lastMetaUpdate = time.Time{}
 		default:
-			// fmt.Println("no message received")
 		}
 
 		// Update client's metadata if it's newer
 		if userStation.CurrentMeta.Updated.After(lastMetaUpdate) {
-			log.Println("TIME: PUDATING ")
 			if err = updateClientMetadata(userStation, conn); err != nil {
 				c.AbortWithError(http.StatusInternalServerError, err)
 			}
