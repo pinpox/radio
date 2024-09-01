@@ -5,7 +5,7 @@ go 1.22.5
 require (
 	github.com/gin-gonic/gin v1.9.0
 	github.com/gorilla/websocket v1.5.0
-	github.com/inspectorgoget/icymeta v0.1.0
+	gopkg.in/ini.v1 v1.67.0
 )
 
 require (

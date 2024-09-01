@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"embed" // TODO embed templates and files
+	"embed"
 	"flag"
 	"html/template"
 	"io"
@@ -14,68 +14,30 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+
+	"gopkg.in/ini.v1"
 )
 
-type RadioStationMetadata struct {
-	Title   string
-	Updated time.Time
-}
-
-type RadioStation struct {
-	Url         string
-	Name        string
-	CurrentMeta *RadioStationMetadata
-}
-
-func (rs *RadioStation) Update() {
-
-	if title, err := rs.GetStreamTitle(); err != nil {
-		log.Println(err)
-	} else {
-		if rs.CurrentMeta.Title != title {
-			rs.CurrentMeta.Title = title
-			rs.CurrentMeta.Updated = time.Now()
-		}
-	}
-}
-
-type RadioStations []RadioStation
-
-// TODO read from config file
-var Stations RadioStations = []RadioStation{
-	{
-		Url:         "https://hirschmilch.de:7000/psytrance.mp3",
-		Name:        "Hirschmilch Psytrance",
-		CurrentMeta: &RadioStationMetadata{Title: "", Updated: time.Now()},
-	},
-	{
-		Url:         "https://hirschmilch.de:7000/progressive.mp3",
-		Name:        "Hirschmilch Progressive",
-		CurrentMeta: &RadioStationMetadata{Title: "", Updated: time.Now()},
-	},
-	{
-		Url:         "https://radio.lassul.us/music.mp3",
-		Name:        "Lassulus Radio",
-		CurrentMeta: &RadioStationMetadata{Title: "", Updated: time.Now()},
-	},
-}
-
-func (s *RadioStations) Update() {
-	for {
-		for _, v := range *s {
-			v.Update()
-		}
-
-		time.Sleep(time.Second * 5)
-	}
-}
-
 var (
-	address string
+	Stations     RadioStations
+	address      string
+	stationsFile string
 )
 
 func init() {
 	flag.StringVar(&address, "a", ":7000", "address to use")
+	flag.StringVar(&stationsFile, "s", "stations.ini", "station configuration")
+
+	inidata, err := ini.Load(stationsFile)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, v := range inidata.Sections() {
+		if v.Name() != "DEFAULT" {
+			Stations.Add(v.Name(), v.Key("url").Value())
+		}
+	}
 }
 
 var upgrader = websocket.Upgrader{
