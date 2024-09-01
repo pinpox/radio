@@ -51,11 +51,11 @@ button:active {
 	left: 5px;
 }
 
-@media (min-width: 768px) {
-	button {
-		padding: 0.25em 0.75em;
-	}
-}
+/*@media (min-width: 768px) {*/
+/*	button {*/
+/*		padding: 0.25em 0.75em;*/
+/*	}*/
+/*}*/
 
 .slider {
 	-webkit-appearance: none;
@@ -96,4 +96,9 @@ button:active {
 	width: 40%;
 }
 
+.buttoncontainer {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
 

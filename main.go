@@ -179,7 +179,7 @@ func sendTemplateWebsocket(conn *websocket.Conn, templateName string, data gin.H
 		log.Fatalf("template execution: %s", err)
 	}
 
-	log.Println("writing message", renderedMetadata.String())
+	// log.Println("writing message", renderedMetadata.String())
 	return conn.WriteMessage(websocket.TextMessage, renderedMetadata.Bytes())
 }
 

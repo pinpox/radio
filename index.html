@@ -27,9 +27,16 @@
 						<source id="audio-source" src="/station/0" type="audio/mpeg">
 					</audio>
 
-						<button id="button-ws-prev" hx-on::after-request="alert('Done making a request!')" ws-send hx-vals='{"action": "previous"}' >Previous<br>Station</button>
-						<button id="play-pause-button">Play</button>
-						<button id="button-ws-next" ws-send hx-vals='{"action": "next"}' >Next<br>Station</button>
+
+						<div class="buttoncontainer">
+
+
+							<button id="button-ws-prev" ws-send hx-vals='{"action": "previous"}' >Previous<br>Station</button>
+							<button id="play-pause-button">Play</button>
+							<button id="button-ws-next" ws-send hx-vals='{"action": "next"}' >Next<br>Station</button>
+
+
+						</div>
 				</div>
 
 
@@ -41,12 +48,12 @@
 
 
 
-			<!--<input type="text" id="message" placeholder="Type a message...">-->
-			<!--<button onclick="sendMessage()">Send</button>-->
-			<!--<hr>-->
-			<!--<div id="output"></div>-->
-			<!---->
+				<!--<input type="text" id="message" placeholder="Type a message...">-->
+				<!--<button onclick="sendMessage()">Send</button>-->
+				<!--<hr>-->
+				<!--<div id="output"></div>-->
+				<!---->
 
-			<script src="static/script.js" defer></script>
+				<script src="static/script.js" defer></script>
 		</body>
 </html>
