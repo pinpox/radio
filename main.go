@@ -43,23 +43,19 @@ type RadioStations []RadioStation
 // TODO read from config file
 var Stations RadioStations = []RadioStation{
 	{
-		Url:  "https://hirschmilch.de:7000/psytrance.mp3",
-		Name: "Hirschmilch Psytrance",
-
-		CurrentMeta: &RadioStationMetadata{
-			Title:   "",
-			Updated: time.Now(),
-		},
+		Url:         "https://hirschmilch.de:7000/psytrance.mp3",
+		Name:        "Hirschmilch Psytrance",
+		CurrentMeta: &RadioStationMetadata{Title: "", Updated: time.Now()},
 	},
-
 	{
-		Url:  "https://hirschmilch.de:7000/progressive.mp3",
-		Name: "Hirschmilch Progressive",
-
-		CurrentMeta: &RadioStationMetadata{
-			Title:   "",
-			Updated: time.Now(),
-		},
+		Url:         "https://hirschmilch.de:7000/progressive.mp3",
+		Name:        "Hirschmilch Progressive",
+		CurrentMeta: &RadioStationMetadata{Title: "", Updated: time.Now()},
+	},
+	{
+		Url:         "https://radio.lassul.us/music.mp3",
+		Name:        "Lassulus Radio",
+		CurrentMeta: &RadioStationMetadata{Title: "", Updated: time.Now()},
 	},
 }
 
@@ -125,7 +121,6 @@ func updateClientPlayer(stationIndex chan int, conn *websocket.Conn) {
 
 				// TODO implement messages
 
-
 				if val == "next" {
 					userStationIndex = (userStationIndex + 1) % len(Stations)
 				}
@@ -147,8 +142,8 @@ func updateClientPlayer(stationIndex chan int, conn *websocket.Conn) {
 func updateClientMetadata(userStation RadioStation, conn *websocket.Conn) error {
 
 	if err := sendTemplateWebsocket(conn, "templates/metadata.html", gin.H{
-		"StationTitle":  userStation.CurrentMeta.Title,
-		"StationName": userStation.Name,
+		"StationTitle": userStation.CurrentMeta.Title,
+		"StationName":  userStation.Name,
 	}); err != nil {
 		log.Printf("%s, error while writing message\n", err.Error())
 		return err

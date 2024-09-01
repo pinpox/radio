@@ -1,1 +1,99 @@
 
+:root {
+	--color: Aquamarine;
+	--background-color: Black;
+	--font-size: 13;
+}
+
+
+body {
+	text-align: center;
+
+	font-family: Berkeley Mono, monospace;
+	font-size: var(--font-size);
+	background-color: var(--background-color);
+	color: var(--color);
+}
+
+[data-status="connected"] {
+	color: green;
+}
+
+[data-status="disconnected"] {
+	color: red;
+}
+
+/* CSS */
+button {
+	font-family: Berkeley Mono, monospace;
+	font-size: 16px;
+	letter-spacing: 2px;
+	text-decoration: none;
+	text-transform: uppercase;
+	color: var(--color);
+	background-color: var(--background-color);
+	cursor: pointer;
+	border: 3px solid;
+	padding: 0.25em 0.5em;
+	box-shadow: 1px 1px 0px 0px, 2px 2px 0px 0px, 3px 3px 0px 0px, 4px 4px 0px 0px, 5px 5px 0px 0px;
+	position: relative;
+	user-select: none;
+	-webkit-user-select: none;
+	touch-action: manipulation;
+	min-width: 150px;
+	min-height: 50px;
+	margin: 5px;
+}
+
+button:active {
+	box-shadow: 0px 0px 0px 0px;
+	top: 5px;
+	left: 5px;
+}
+
+@media (min-width: 768px) {
+	button {
+		padding: 0.25em 0.75em;
+	}
+}
+
+.slider {
+	-webkit-appearance: none;
+	width: 95%;
+	height: 15px;
+	background: DarkSlateGray;
+	outline: none;
+	opacity: 0.7;
+	-webkit-transition: .2s;
+	transition: opacity .2s;
+	margin: 10px;
+}
+
+.slider::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 25px;
+	height: 25px;
+	background: var(--color);
+	cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+	width: 25px;
+	height: 25px;
+	background: var(--color);
+	cursor: pointer;
+}
+
+.mainbox {
+	border: 1px solid var(--color);
+	max-width: 500px;
+	text-align: center;
+	display: block;
+	margin-left: auto;
+	margin-right: auto;
+	margin-top: 40px;
+	width: 40%;
+}
+
+

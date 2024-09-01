@@ -9,32 +9,44 @@
 		<link rel="icon" href="static/parrot.gif" type="image/gif" >
 		<link rel="stylesheet" href="static/style.css">
 	</head>
-	<body>
-		<h1>Websocket Radio</h1>
+		<body>
+			<h1>Websocket Radio</h1>
 
 
-		status:
-		<div id="status"></div>
+			<div class="mainbox">
 
-		<div hx-ext="ws" ws-connect="/ws">
 
-			stationname:
-			<div id="station-name"></div>
+				<div id="status"></div>
 
-			title:
-			<div id="station-title"></div>
+				<div hx-ext="ws" ws-connect="/ws">
 
-			<audio id="audio-player" controls autoplay > <source src="/station/0" type="audio/mpeg"> </audio>
-			<button id="button-ws-prev" ws-send hx-vals='{"action": "previous"}' > Previous Station </button>
-			<button id="button-ws-next" ws-send hx-vals='{"action": "next"}' > Next Station </button>
-		</div>
+					<div id="station-name"></div>
+					<div id="station-title"></div>
 
-		<!--<input type="text" id="message" placeholder="Type a message...">-->
-		<!--<button onclick="sendMessage()">Send</button>-->
-		<!--<hr>-->
-		<!--<div id="output"></div>-->
-		<!---->
+					<audio id="audio-player" autoplay >
+						<source id="audio-source" src="/station/0" type="audio/mpeg">
+					</audio>
 
-		<script src="static/script.js" defer></script>
-	</body>
+						<button id="button-ws-prev" hx-on::after-request="alert('Done making a request!')" ws-send hx-vals='{"action": "previous"}' >Previous<br>Station</button>
+						<button id="play-pause-button">Play</button>
+						<button id="button-ws-next" ws-send hx-vals='{"action": "next"}' >Next<br>Station</button>
+				</div>
+
+
+				<input type="range" class="slider" id="volume-slider" min="0" max="1" step="0.1" value="1" >
+
+			</div>
+
+
+
+
+
+			<!--<input type="text" id="message" placeholder="Type a message...">-->
+			<!--<button onclick="sendMessage()">Send</button>-->
+			<!--<hr>-->
+			<!--<div id="output"></div>-->
+			<!---->
+
+			<script src="static/script.js" defer></script>
+		</body>
 </html>
