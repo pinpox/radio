@@ -2,10 +2,11 @@ package main
 
 import (
 	"bytes"
-	// "encoding/json"
+	"embed" // TODO embed templates and files
 	"flag"
 	"html/template"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"strconv"
@@ -85,6 +86,9 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+//go:embed static templates index.html
+var f embed.FS
+
 func main() {
 
 	go Stations.Update()
@@ -94,9 +98,15 @@ func main() {
 
 	router := gin.Default()
 
-	router.LoadHTMLGlob("templates/*")
+	templ := template.Must(template.New("").ParseFS(f, "templates/*"))
+	router.SetHTMLTemplate(templ)
 
-	router.Static("/static", "./static")
+	staticFS, err := fs.Sub(f, "static")
+	if err != nil {
+		panic(err)
+	}
+	router.StaticFS("/static", http.FS(staticFS))
+
 	router.GET("/", func(c *gin.Context) { c.File("index.html") })
 	router.GET("/station/:index", handleRadioStations)
 	router.GET("/ws", handleWebSocket)

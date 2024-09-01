@@ -35,9 +35,6 @@ func (r RadioStation) getStreamMetas() ([]byte, error) {
 
 	streamUrl := r.Url
 
-
-
-
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", streamUrl, nil)
 	req.Header.Set("Icy-MetaData", "1")
@@ -49,7 +46,7 @@ func (r RadioStation) getStreamMetas() ([]byte, error) {
 	// We sent "Icy-MetaData", we should have a "icy-metaint" in return
 	ih := resp.Header.Get("icy-metaint")
 	if ih == "" {
-		return nil, fmt.Errorf("no metadata")
+		return nil, fmt.Errorf("no metadata for %s", streamUrl)
 	}
 	// "icy-metaint" is how often (in bytes) should we receive the meta
 	ib, err := strconv.Atoi(ih)
