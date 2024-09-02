@@ -57,6 +57,8 @@ var upgrader = websocket.Upgrader{
 //go:embed static templates
 var f embed.FS
 
+var templ *template.Template
+
 func main() {
 
 	go Stations.Update()
@@ -65,7 +67,7 @@ func main() {
 
 	router := gin.Default()
 
-	templ := template.Must(template.New("").ParseFS(f, "templates/*"))
+	templ = template.Must(template.New("").ParseFS(f, "templates/*"))
 	router.SetHTMLTemplate(templ)
 
 	staticFS, err := fs.Sub(f, "static")
@@ -106,7 +108,7 @@ func updateClientPlayer(stationIndex chan int, conn *MutexConn) {
 					userStationIndex = (len(Stations) + userStationIndex - 1) % len(Stations)
 				}
 
-				if err := sendTemplateWebsocket(conn, "templates/player.html",
+				if err := sendTemplateWebsocket(conn, "player.html",
 					gin.H{"Url": userStationIndex}); err != nil {
 					log.Println(err)
 				}
@@ -118,7 +120,7 @@ func updateClientPlayer(stationIndex chan int, conn *MutexConn) {
 
 func updateClientMetadata(userStation RadioStation, conn *MutexConn) error {
 
-	if err := sendTemplateWebsocket(conn, "templates/metadata.html", gin.H{
+	if err := sendTemplateWebsocket(conn, "metadata.html", gin.H{
 		"StationTitle": userStation.CurrentMeta.Title,
 		"StationName":  userStation.Name,
 	}); err != nil {
@@ -187,15 +189,10 @@ func handleWebSocket(c *gin.Context) {
 
 func sendTemplateWebsocket(conn *MutexConn, templateName string, data gin.H) error {
 
-	tmpl, err := template.ParseFiles(templateName)
-	if err != nil {
-		log.Fatalf("template parsing: %s", err)
-	}
-
 	// Render the template with the message as data.
 	var renderedMetadata bytes.Buffer
 
-	err = tmpl.Execute(&renderedMetadata, data)
+	err := templ.ExecuteTemplate(&renderedMetadata,templateName, data)
 	if err != nil {
 		log.Fatalf("template execution: %s", err)
 	}
