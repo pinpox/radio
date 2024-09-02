@@ -54,7 +54,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-//go:embed static templates index.html
+//go:embed static templates
 var f embed.FS
 
 func main() {
@@ -74,7 +74,7 @@ func main() {
 	}
 	router.StaticFS("/static", http.FS(staticFS))
 
-	router.GET("/", func(c *gin.Context) { c.File("index.html") })
+	router.GET("/", func(c *gin.Context) { c.HTML(http.StatusOK, "index.html", gin.H{}) })
 	router.GET("/station/:index", handleRadioStations)
 	router.GET("/ws", handleWebSocket)
 
