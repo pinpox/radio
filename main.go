@@ -17,6 +17,8 @@ import (
 	"github.com/gorilla/websocket"
 
 	"gopkg.in/ini.v1"
+	//     _ "net/http/pprof"
+	// "github.com/gin-contrib/pprof"
 )
 
 var (
@@ -28,9 +30,9 @@ var (
 func init() {
 
 	address = os.Getenv("RADIO_ADDRESS")
-	stationsFile= os.Getenv("RADIO_STATIONFILE")
+	stationsFile = os.Getenv("RADIO_STATIONFILE")
 
-	if address == ""|| stationsFile== "" {
+	if address == "" || stationsFile == "" {
 		log.Fatal("Set environment variables RADIO_ADDRESS and RADIO_STATIONFILE")
 	}
 
@@ -66,6 +68,7 @@ func main() {
 	var err error
 
 	router := gin.Default()
+	// pprof.Register(router)
 
 	templ = template.Must(template.New("").ParseFS(f, "templates/*"))
 	router.SetHTMLTemplate(templ)
@@ -133,7 +136,7 @@ func updateClientMetadata(userStation RadioStation, conn *MutexConn) error {
 
 type MutexConn struct {
 	Sock *websocket.Conn
-	Mut   sync.Mutex
+	Mut  sync.Mutex
 }
 
 func (m *MutexConn) send(mtype int, data []byte) error {
@@ -153,7 +156,7 @@ func handleWebSocket(c *gin.Context) {
 
 	conn := MutexConn{
 		Sock: wsConn,
-		Mut:   sync.Mutex{},
+		Mut:  sync.Mutex{},
 	}
 
 	stationIndex := make(chan int)
@@ -192,7 +195,7 @@ func sendTemplateWebsocket(conn *MutexConn, templateName string, data gin.H) err
 	// Render the template with the message as data.
 	var renderedMetadata bytes.Buffer
 
-	err := templ.ExecuteTemplate(&renderedMetadata,templateName, data)
+	err := templ.ExecuteTemplate(&renderedMetadata, templateName, data)
 	if err != nil {
 		log.Fatalf("template execution: %s", err)
 	}

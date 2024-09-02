@@ -1,4 +1,5 @@
 package main
+
 import (
 	"bufio"
 	"bytes"
@@ -32,7 +33,6 @@ func (r RadioStation) GetStreamTitle() (string, error) {
 // get stream metadatas
 func (r RadioStation) getStreamMetas() ([]byte, error) {
 
-
 	streamUrl := r.Url
 
 	client := &http.Client{}
@@ -42,6 +42,7 @@ func (r RadioStation) getStreamMetas() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	// We sent "Icy-MetaData", we should have a "icy-metaint" in return
 	ih := resp.Header.Get("icy-metaint")
