@@ -10,5 +10,6 @@ A web player for (icecast) radio streams.
 2. Set the path to the stations file and the address to listen on via environment variables(`RADIO_ADDRESS` and `RADIO_STATIONFILE`).
 3. Make sure your reverse-proxy proxies websockets.
 
+### 🎵 Stations
 
-
+If you have an icecast stream and would like to get a station on [0cx.radio.de](https://radio.0cx.de) feel free to reach out and you may get featured.
