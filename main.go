@@ -3,12 +3,12 @@ package main
 import (
 	"bytes"
 	"embed"
-	"flag"
 	"html/template"
 	"io"
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -26,8 +26,13 @@ var (
 )
 
 func init() {
-	flag.StringVar(&address, "a", ":7000", "address to use")
-	flag.StringVar(&stationsFile, "s", "stations.ini", "station configuration")
+
+	address = os.Getenv("RADIO_ADDRESS")
+	stationsFile= os.Getenv("RADIO_STATIONFILE")
+
+	if address == ""|| stationsFile== "" {
+		log.Fatal("Set environment variables RADIO_ADDRESS and RADIO_STATIONFILE")
+	}
 
 	inidata, err := ini.Load(stationsFile)
 	if err != nil {
@@ -57,7 +62,6 @@ func main() {
 	go Stations.Update()
 
 	var err error
-	flag.Parse()
 
 	router := gin.Default()
 

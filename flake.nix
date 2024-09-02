@@ -35,7 +35,7 @@
             pname = "radio";
             inherit version;
             src = ./.;
-            vendorHash = "sha256-pQpattmS9VmO3ZIQUtn66az8GSmB4IvYhTTCFn6SUmo=";
+            vendorHash = "sha256-V/0xHbwqTqug+4b+JcrPwV9+s2m1L5VZDa+rvnumyco=";
           };
         });
 
