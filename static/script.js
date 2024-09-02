@@ -3,8 +3,6 @@ const status = document.querySelector('#status');
 // Htmx:wsConnecting
 // htmx:wsError
 
-
-
 let socket;
 let elt;
 
@@ -15,12 +13,11 @@ document.addEventListener('visibilitychange', event => {
 	}
 });
 
-//document.body.addEventListener('htmx:wsAfterMessage', event => {
-//	console.log('message in htmx');
-//	console.log(event.detail.message);
-//	console.log(event.detail);
-//	console.log('message in htmx end');
-//});
+document.body.addEventListener('htmx:wsClose', event => {
+	console.log('disconnected');
+	status.innerText = 'Disconnected';
+	status.dataset.status = 'disconnected';
+});
 
 document.body.addEventListener('htmx:wsOpen', event => {
 	console.log('connected');
@@ -31,35 +28,47 @@ document.body.addEventListener('htmx:wsOpen', event => {
 	status.innerText = 'Connected';
 	status.dataset.status = 'connected';
 });
+
 document.body.addEventListener('htmx:wsClose', event => {
 	console.log('disconnected');
 	status.innerText = 'Disconnected';
 	status.dataset.status = 'disconnected';
 });
 
-const volume = document.querySelector('#volume-slider');
 const player = document.querySelector('#audio-player');
-const playPauseButton = document.querySelector('#play-pause-button');
-const nextButton = document.querySelector('#button-ws-next');
-const previousButton = document.querySelector('#button-ws-prev');
-const audioSource = document.querySelector('#audio-source');
 
-// Reload player src after swapping it. This makes sure we don't play two streams at once
-// TODO use htmx:afterSwap instead, this fails sometimes
-//https://htmx.org/events/#htmx:afterSwap
-htmx.on("#button-ws-next", "click", function(evt){ player.load(); });
-htmx.on("#button-ws-prev", "click", function(evt){ player.load(); });
+// Workaround to prevent player from playing when replaced
+let audioSource = document.querySelector('#audio-source');
+let currentSource = audioSource.src;
+
+const wsContainer = document.querySelector('#ws-container');
+wsContainer.addEventListener('htmx:wsAfterMessage', event => {
+	audioSource = document.querySelector('#audio-source');
+	if (currentSource != audioSource.src) {
+		currentSource = audioSource.src;
+		player.load();
+	}
+});
 
 // Volume slider
+const volume = document.querySelector('#volume-slider');
 volume.addEventListener('change', e => {
 	player.volume = e.currentTarget.value;
 });
 
-// Player.setAttribute('src',theNewSource); //change the source
-// player.load(); //load the new source
-// player.play(); //play
-
+// Pause/Play button
+const playPauseButton = document.querySelector('#play-pause-button');
 let isPlaying = false;
+
+player.addEventListener('play', () => {
+	playPauseButton.textContent = 'pause';
+	isPlaying = true;
+});
+
+player.addEventListener('pause', () => {
+	playPauseButton.textContent = 'play';
+	isPlaying = false;
+});
 
 playPauseButton.addEventListener('click', () => {
 	if (isPlaying) {
@@ -69,6 +78,4 @@ playPauseButton.addEventListener('click', () => {
 		player.play();
 		playPauseButton.textContent = 'Pause';
 	}
-
-	isPlaying = !isPlaying;
 });

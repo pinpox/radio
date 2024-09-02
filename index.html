@@ -1,59 +1,38 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<title>Websocket Radio</title>
-
+		<title>0cx Radio</title>
+		<meta
+		name="viewport"
+		content="width=device-width,height=device-height,user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1"
+		/>
 		<script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
 		<script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/ws.js"></script>
-
 		<link rel="icon" href="static/parrot.gif" type="image/gif" >
 		<link rel="stylesheet" href="static/style.css">
 	</head>
 		<body>
-			<h1>Websocket Radio</h1>
-
-
+			<h1>Neonsock Radio</h1>
 			<div class="mainbox">
-
-
 				<div id="status"></div>
-
-				<div hx-ext="ws" ws-connect="/ws">
-
+				<div id="ws-container" hx-ext="ws" ws-connect="/ws">
 					<div id="station-name"></div>
 					<div id="station-title"></div>
-
 					<audio id="audio-player" autoplay >
 						<source id="audio-source" src="/station/0" type="audio/mpeg">
 					</audio>
-
-
 						<div class="buttoncontainer">
-
-
-							<button id="button-ws-prev" ws-send hx-vals='{"action": "previous"}' >Previous<br>Station</button>
+							<button id="button-ws-prev" ws-send hx-vals='{"action": "previous"}'>
+								Previous<br>Station
+							</button>
 							<button id="play-pause-button">Play</button>
-							<button id="button-ws-next" ws-send hx-vals='{"action": "next"}' >Next<br>Station</button>
-
-
+							<button id="button-ws-next" ws-send hx-vals='{"action": "next"}'>
+								Next<br>Station
+							</button>
 						</div>
 				</div>
-
-
 				<input type="range" class="slider" id="volume-slider" min="0" max="1" step="0.1" value="1" >
-
 			</div>
-
-
-
-
-
-				<!--<input type="text" id="message" placeholder="Type a message...">-->
-				<!--<button onclick="sendMessage()">Send</button>-->
-				<!--<hr>-->
-				<!--<div id="output"></div>-->
-				<!---->
-
 				<script src="static/script.js" defer></script>
 		</body>
 </html>

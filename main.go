@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -79,13 +80,13 @@ func main() {
 	}
 }
 
-func updateClientPlayer(stationIndex chan int, conn *websocket.Conn) {
+func updateClientPlayer(stationIndex chan int, conn *MutexConn) {
 
 	userStationIndex := 0
 
 	for {
 		var jsonMsg gin.H
-		if err := conn.ReadJSON(&jsonMsg); err != nil {
+		if err := conn.Sock.ReadJSON(&jsonMsg); err != nil {
 			log.Println("failed json parsing: ", err)
 			return
 		} else {
@@ -111,7 +112,7 @@ func updateClientPlayer(stationIndex chan int, conn *websocket.Conn) {
 	}
 }
 
-func updateClientMetadata(userStation RadioStation, conn *websocket.Conn) error {
+func updateClientMetadata(userStation RadioStation, conn *MutexConn) error {
 
 	if err := sendTemplateWebsocket(conn, "templates/metadata.html", gin.H{
 		"StationTitle": userStation.CurrentMeta.Title,
@@ -124,19 +125,35 @@ func updateClientMetadata(userStation RadioStation, conn *websocket.Conn) error 
 
 }
 
+type MutexConn struct {
+	Sock *websocket.Conn
+	Mut   sync.Mutex
+}
+
+func (m *MutexConn) send(mtype int, data []byte) error {
+	m.Mut.Lock()
+	defer m.Mut.Unlock()
+	return m.Sock.WriteMessage(mtype, data)
+}
+
 func handleWebSocket(c *gin.Context) {
 
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	wsConn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Printf("%s, error while Upgrading websocket connection\n", err.Error())
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
+	conn := MutexConn{
+		Sock: wsConn,
+		Mut:   sync.Mutex{},
+	}
+
 	stationIndex := make(chan int)
 
 	// Read messages from client to control the player
-	go updateClientPlayer(stationIndex, conn)
+	go updateClientPlayer(stationIndex, &conn)
 
 	// Keep updating client metadata periodically
 	userStation := Stations[0]
@@ -154,7 +171,7 @@ func handleWebSocket(c *gin.Context) {
 
 		// Update client's metadata if it's newer
 		if userStation.CurrentMeta.Updated.After(lastMetaUpdate) {
-			if err = updateClientMetadata(userStation, conn); err != nil {
+			if err = updateClientMetadata(userStation, &conn); err != nil {
 				c.AbortWithError(http.StatusInternalServerError, err)
 			}
 			lastMetaUpdate = time.Now()
@@ -164,7 +181,7 @@ func handleWebSocket(c *gin.Context) {
 	}
 }
 
-func sendTemplateWebsocket(conn *websocket.Conn, templateName string, data gin.H) error {
+func sendTemplateWebsocket(conn *MutexConn, templateName string, data gin.H) error {
 
 	tmpl, err := template.ParseFiles(templateName)
 	if err != nil {
@@ -179,8 +196,10 @@ func sendTemplateWebsocket(conn *websocket.Conn, templateName string, data gin.H
 		log.Fatalf("template execution: %s", err)
 	}
 
-	// log.Println("writing message", renderedMetadata.String())
-	return conn.WriteMessage(websocket.TextMessage, renderedMetadata.Bytes())
+	return conn.send(websocket.TextMessage, renderedMetadata.Bytes())
+
+	// // log.Println("writing message", renderedMetadata.String())
+	// return conn.WriteMessage(websocket.TextMessage, renderedMetadata.Bytes())
 }
 
 func handleRadioStations(c *gin.Context) {
