@@ -16,11 +16,13 @@
 			<div class="mainbox">
 				<div id="status"></div>
 				<div id="ws-container" hx-ext="ws" ws-connect="/ws">
-					<div id="station-name"></div>
-					<div id="station-title"></div>
-					<audio id="audio-player" autoplay >
-						<source id="audio-source" src="/station/0" type="audio/mpeg">
-					</audio>
+					<div class="meta-container">
+						<div id="station-name"></div>
+						<div id="station-title"></div>
+						<audio id="audio-player" autoplay >
+							<source id="audio-source" src="/station/0" type="audio/mpeg">
+						</audio>
+					</div>
 						<div class="buttoncontainer">
 							<button id="button-ws-prev" ws-send hx-vals='{"action": "previous"}'>
 								Previous<br>Station
@@ -35,4 +37,12 @@
 			</div>
 				<script src="static/script.js" defer></script>
 		</body>
+		<footer>
+			<p>
+			<a href="https://github.com/pinpox/radio">made with</a>
+			<span class="emoji">🎶</span>
+			by <a href="https://pablo.tools">pinpox</a>
+			</p>
+		</footer>
+
 </html>
