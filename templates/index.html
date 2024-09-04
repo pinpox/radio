@@ -11,30 +11,41 @@
 		<link rel="icon" href="static/parrot.gif" type="image/gif" >
 		<link rel="stylesheet" href="static/style.css">
 	</head>
-		<body>
+		<body id="ws-container" hx-ext="ws" ws-connect="/ws">
 			<h1>0cx Radio</h1>
 			<div class="mainbox">
 				<div id="status"></div>
-				<div id="ws-container" hx-ext="ws" ws-connect="/ws">
-					<div class="meta-container">
-						<div id="station-name"></div>
-						<div id="station-title"></div>
-						<audio id="audio-player" autoplay >
-							<source id="audio-source" src="/station/0" type="audio/mpeg">
-						</audio>
-					</div>
-						<div class="buttoncontainer">
-							<button id="button-ws-prev" ws-send hx-vals='{"action": "previous"}'>
-								Previous<br>Station
-							</button>
-							<button id="play-pause-button">Play</button>
-							<button id="button-ws-next" ws-send hx-vals='{"action": "next"}'>
-								Next<br>Station
-							</button>
-						</div>
+
+				<div class="meta-container">
+					<div id="station-name"></div>
+					<div id="station-title"></div>
+					<audio id="audio-player" autoplay >
+						<source id="audio-source" src="/station/0" type="audio/mpeg">
+					</audio>
 				</div>
+				<div class="buttoncontainer">
+					<button id="button-ws-prev" ws-send hx-vals='{"action": "previous"}'>
+						Previous<br>Station
+					</button>
+					<button id="play-pause-button">Play</button>
+					<button id="button-ws-next" ws-send hx-vals='{"action": "next"}'>
+						Next<br>Station
+					</button>
+				</div>
+
 				<input type="range" class="slider" id="volume-slider" min="0" max="1" step="0.1" value="1" >
 			</div>
+
+				<div class="chatbox">
+					<form id="form-chat" ws-send hx-vals='{"action": "chat"}' >
+						<input name="message" autofocus class="input-chat"
+						autocomplete="off"
+						id="form-chat-input"
+						placeholder="Leave a message..."/>
+					</form>
+					<div id="chatmessages"></div>
+				</div>
+
 				<script src="static/script.js" defer></script>
 		</body>
 		<footer>

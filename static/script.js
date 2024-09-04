@@ -6,13 +6,13 @@ const status = document.querySelector('#status');
 let socket;
 let elt;
 
-document.addEventListener('visibilitychange', event => {
-	console.log('visibilitychange', document.visibilityState);
-	if (socket) {
-		socket.send(document.visibilityState, elt);
-	}
-});
-
+// Document.addEventListener('visibilitychange', event => {
+//	console.log('visibilitychange', document.visibilityState);
+//	if (socket) {
+//		socket.send(document.visibilityState, elt);
+//	}
+// });
+//
 document.body.addEventListener('htmx:wsClose', event => {
 	console.log('disconnected');
 	status.innerText = 'Disconnected';
@@ -48,6 +48,12 @@ wsContainer.addEventListener('htmx:wsAfterMessage', event => {
 		currentSource = audioSource.src;
 		player.load();
 	}
+
+	// Delete children after n
+	const node = document.querySelector('#chatmessages');
+	for (const n of node.querySelectorAll('.chatmessage:nth-child(1n+10)')) {
+		n.remove();
+	}
 });
 
 // Volume slider
@@ -55,6 +61,32 @@ const volume = document.querySelector('#volume-slider');
 volume.addEventListener('change', e => {
 	player.volume = e.currentTarget.value;
 });
+
+const form = document.querySelector('#form-chat');
+const formInput = document.querySelector('#form-chat-input');
+
+
+    var myEventListener = htmx.on("#form-chat", "submit", function(evt){
+		console.log(evt); 
+
+	formInput.value = '';
+	});
+
+//u.addEventListener('htmx:wsAfterMessage', event => {
+//	audioSource = document.querySelector('#audio-source');
+//	if (currentSource != audioSource.src) {
+//		currentSource = audioSource.src;
+//		player.load();
+//	}
+
+//form.addEventListener('submit', e => {
+//	console.log('submitted');
+//
+//	event.preventDefault();
+//	formInput.value = '';
+//
+//	// Player.volume = e.currentTarget.value;
+//});
 
 // Pause/Play button
 const playPauseButton = document.querySelector('#play-pause-button');

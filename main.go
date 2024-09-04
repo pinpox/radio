@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"embed"
+	"encoding/json"
 	"html/template"
 	"io"
 	"io/fs"
@@ -10,15 +11,18 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"sync"
+	// "sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
+	// "github.com/gorilla/websocket"
+	"github.com/olahol/melody"
+	"math/rand"
 
-	"gopkg.in/ini.v1"
-	//     _ "net/http/pprof"
 	// "github.com/gin-contrib/pprof"
+	"gopkg.in/ini.v1"
+	// _ "net/http/pprof"
 )
 
 var (
@@ -28,6 +32,11 @@ var (
 )
 
 func init() {
+
+	for i := range usernames {
+		j := rand.Intn(i + 1)
+		usernames[i], usernames[j] = usernames[j], usernames[i]
+	}
 
 	address = os.Getenv("RADIO_ADDRESS")
 	stationsFile = os.Getenv("RADIO_STATIONFILE")
@@ -48,30 +57,29 @@ func init() {
 	}
 }
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
-
 //go:embed static templates
 var f embed.FS
 
 var templ *template.Template
 
-func main() {
+var idCounter atomic.Int64
 
-	go Stations.Update()
+var m *melody.Melody
+
+func main() {
 
 	var err error
 
+	m = melody.New()
+
 	router := gin.Default()
-	// pprof.Register(router)
 
 	templ = template.Must(template.New("").ParseFS(f, "templates/*"))
 	router.SetHTMLTemplate(templ)
+
+	// pprof.Register(router)
+
+	// m.Config.MaxMessageSize = 256
 
 	staticFS, err := fs.Sub(f, "static")
 	if err != nil {
@@ -81,7 +89,50 @@ func main() {
 
 	router.GET("/", func(c *gin.Context) { c.HTML(http.StatusOK, "index.html", gin.H{}) })
 	router.GET("/station/:index", handleRadioStations)
-	router.GET("/ws", handleWebSocket)
+
+	router.GET("/ws", func(c *gin.Context) {
+		m.HandleRequest(c.Writer, c.Request)
+	})
+
+	m.HandleMessage(handlerWsMessage)
+
+	m.HandleConnect(func(s *melody.Session) {
+		id := idCounter.Add(1)
+
+		s.Set("id", id)
+		s.Set("station", 0)
+
+		// s.Write([]byte(fmt.Sprintf("iam %d", id)))
+	})
+
+	go func() {
+		for {
+
+			for k, v := range Stations {
+
+				v.Update()
+
+				tData, err := renderTemplate("metadata.html", v)
+
+				if err != nil {
+					continue
+				}
+
+				// broadcast station
+				m.BroadcastFilter(
+					tData,
+					func(s *melody.Session) bool {
+						return (getSessionStation(s) == k)
+					},
+				)
+
+				//TODO set and check updated time or use tick
+
+			}
+			time.Sleep(3 * time.Second)
+		}
+
+	}()
 
 	err = router.Run(address)
 	if err != nil {
@@ -89,121 +140,109 @@ func main() {
 	}
 }
 
-func updateClientPlayer(stationIndex chan int, conn *MutexConn) {
+func renderTemplate(name string, data any) ([]byte, error) {
 
-	userStationIndex := 0
+	var renderedTemplate bytes.Buffer
+	err := templ.ExecuteTemplate(&renderedTemplate, name, data)
+	if err != nil {
+		log.Println("Failed to render template:", name)
+		log.Println(err)
+		return nil, err
+	}
 
-	for {
-		var jsonMsg gin.H
-		if err := conn.Sock.ReadJSON(&jsonMsg); err != nil {
-			log.Println("failed json parsing: ", err)
-			return
-		} else {
-			if val, ok := jsonMsg["action"]; ok {
+	return renderedTemplate.Bytes(), nil
+}
 
-				// TODO implement messages
-
-				if val == "next" {
-					userStationIndex = (userStationIndex + 1) % len(Stations)
-				}
-
-				if val == "previous" {
-					userStationIndex = (len(Stations) + userStationIndex - 1) % len(Stations)
-				}
-
-				if err := sendTemplateWebsocket(conn, "player.html",
-					gin.H{"Url": userStationIndex}); err != nil {
-					log.Println(err)
-				}
-				stationIndex <- userStationIndex
-			}
+func getSessionID(s *melody.Session) int {
+	if s, exists := s.Get("id"); exists {
+		if idInt, ok := s.(int64); ok {
+			return int(idInt)
 		}
 	}
+
+	log.Println("Error: no user id found in session")
+	return 0
 }
 
-func updateClientMetadata(userStation RadioStation, conn *MutexConn) error {
+func getSessionStation(s *melody.Session) int {
 
-	if err := sendTemplateWebsocket(conn, "metadata.html", gin.H{
-		"StationTitle": userStation.CurrentMeta.Title,
-		"StationName":  userStation.Name,
-	}); err != nil {
-		log.Printf("%s, error while writing message\n", err.Error())
-		return err
+	if s, exists := s.Get("station"); exists {
+		if stationInt, ok := s.(int); ok {
+			return stationInt
+		}
 	}
-	return nil
 
+	return 0
 }
 
-type MutexConn struct {
-	Sock *websocket.Conn
-	Mut  sync.Mutex
+type WsMessage struct {
+	Action  string `json:"action"`
+	Message string `json:"message"`
+	Headers struct {
+		HXRequest     string `json:"HX-Request"`
+		HXTrigger     string `json:"HX-Trigger"`
+		HXTriggerName any    `json:"HX-Trigger-Name"`
+		HXTarget      string `json:"HX-Target"`
+		HXCurrentURL  string `json:"HX-Current-URL"`
+	} `json:"HEADERS"`
 }
 
-func (m *MutexConn) send(mtype int, data []byte) error {
-	m.Mut.Lock()
-	defer m.Mut.Unlock()
-	return m.Sock.WriteMessage(mtype, data)
-}
+func handlerWsMessage(s *melody.Session, msg []byte) {
 
-func handleWebSocket(c *gin.Context) {
+	station := getSessionStation(s)
 
-	wsConn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		log.Printf("%s, error while Upgrading websocket connection\n", err.Error())
-		c.AbortWithError(http.StatusInternalServerError, err)
+	wsMsg := WsMessage{}
+	if err := json.Unmarshal(msg, &wsMsg); err != nil {
+		log.Println("Unparsable message:", string(msg))
 		return
 	}
 
-	conn := MutexConn{
-		Sock: wsConn,
-		Mut:  sync.Mutex{},
+	switch wsMsg.Action {
+	case "next":
+		s.Set("station", (station+1)%len(Stations))
+
+	case "previous":
+		station -= 1
+
+		if station < 0 {
+			station = len(Stations) - 1
+		}
+		s.Set("station", station)
+
+	case "chat":
+		if wsMsg.Message != "" {
+
+			tData, err := renderTemplate("messages.html", gin.H{
+				"Text": wsMsg.Message,
+				"User": usernames[getSessionID(s)%len(usernames)],
+			})
+
+			if err != nil {
+				return
+			}
+
+			m.Broadcast(tData)
+		}
+
+	default:
+		log.Println("Unhandled message:", wsMsg, string(msg), "with action", wsMsg.Action)
 	}
 
-	stationIndex := make(chan int)
-
-	// Read messages from client to control the player
-	go updateClientPlayer(stationIndex, &conn)
-
-	// Keep updating client metadata periodically
-	userStation := Stations[0]
-	var lastMetaUpdate time.Time
-	for {
-
-		// Check if station has changed
-		select {
-		case i := <-stationIndex:
-			userStation = Stations[i]
-			// Zero lastMetaUpdate to force update
-			lastMetaUpdate = time.Time{}
-		default:
-		}
-
-		// Update client's metadata if it's newer
-		if userStation.CurrentMeta.Updated.After(lastMetaUpdate) {
-			if err = updateClientMetadata(userStation, &conn); err != nil {
-				c.AbortWithError(http.StatusInternalServerError, err)
-			}
-			lastMetaUpdate = time.Now()
-		}
-
-		time.Sleep(time.Second * 2)
+	if err := sendTemplateWebsocket(s, "player.html",
+		gin.H{"Url": station}); err != nil {
+		log.Println(err)
 	}
 }
 
-func sendTemplateWebsocket(conn *MutexConn, templateName string, data gin.H) error {
+func sendTemplateWebsocket(s *melody.Session, templateName string, data gin.H) error {
 
-	// Render the template with the message as data.
-	var renderedMetadata bytes.Buffer
+	renderedTemplate, err := renderTemplate(templateName, data)
 
-	err := templ.ExecuteTemplate(&renderedMetadata, templateName, data)
 	if err != nil {
-		log.Fatalf("template execution: %s", err)
+		log.Fatalf("template execution failed: %s", err)
 	}
 
-	return conn.send(websocket.TextMessage, renderedMetadata.Bytes())
-
-	// // log.Println("writing message", renderedMetadata.String())
-	// return conn.WriteMessage(websocket.TextMessage, renderedMetadata.Bytes())
+	return s.Write(renderedTemplate)
 }
 
 func handleRadioStations(c *gin.Context) {
