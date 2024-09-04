@@ -122,6 +122,10 @@ button:active {
 	padding-bottom: 35px;
 }
 
+.mainbox {
+	padding-top: 20px;
+}
+
 .buttoncontainer {
 	display: flex;
 	align-items: center;
@@ -157,6 +161,8 @@ input {
 .input-chat {
 	padding-top: 10px;
 	padding-bottom: 10px;
+	padding-left: 10px;
+	padding-right: 10px;
 }
 
 input::placeholder {
@@ -183,6 +189,9 @@ input::placeholder {
 	width: 100%;
 	flex-direction: column;
 	text-align: left;
+
+	padding-left: 10px;
+	padding-right: 10px;
 }
 
 .chatmessage {
