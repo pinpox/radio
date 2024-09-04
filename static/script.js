@@ -65,28 +65,7 @@ volume.addEventListener('change', e => {
 const form = document.querySelector('#form-chat');
 const formInput = document.querySelector('#form-chat-input');
 
-
-    var myEventListener = htmx.on("#form-chat", "submit", function(evt){
-		console.log(evt); 
-
-	formInput.value = '';
-	});
-
-//u.addEventListener('htmx:wsAfterMessage', event => {
-//	audioSource = document.querySelector('#audio-source');
-//	if (currentSource != audioSource.src) {
-//		currentSource = audioSource.src;
-//		player.load();
-//	}
-
-//form.addEventListener('submit', e => {
-//	console.log('submitted');
-//
-//	event.preventDefault();
-//	formInput.value = '';
-//
-//	// Player.volume = e.currentTarget.value;
-//});
+htmx.on('#form-chat', 'submit', event => { formInput.value = ''; });
 
 // Pause/Play button
 const playPauseButton = document.querySelector('#play-pause-button');
