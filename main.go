@@ -212,7 +212,8 @@ func handlerWsMessage(s *melody.Session, msg []byte) {
 
 	switch wsMsg.Action {
 	case "next":
-		s.Set("station", (station+1)%len(Stations))
+		station = (station + 1) % len(Stations)
+		s.Set("station", station)
 
 	case "previous":
 		station -= 1

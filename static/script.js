@@ -49,7 +49,7 @@ wsContainer.addEventListener('htmx:wsAfterMessage', event => {
 		player.load();
 	}
 
-	// Delete children after n
+	// Delete children after n (old messages)
 	const node = document.querySelector('#chatmessages');
 	for (const n of node.querySelectorAll('.chatmessage:nth-child(1n+10)')) {
 		n.remove();
