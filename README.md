@@ -1,8 +1,8 @@
-![image](https://github.com/user-attachments/assets/8225aa16-ec92-4868-8a2d-fc9fbb6f4fd1)
+![image](https://github.com/user-attachments/assets/e19ac0b5-45c0-4144-930d-5d4a7fbeb5b6)
 
 # 📻 Radio
 
-A web player for (icecast) radio streams.
+A web player for (icecast) radio streams with integrated chat.
 
 ### ⚙️ Configuration
 
