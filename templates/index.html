@@ -17,8 +17,8 @@
 				<div id="status"></div>
 
 				<div class="meta-container">
-					<div id="station-name"></div>
-					<div id="station-title"></div>
+					<div id="station-name"><br></div>
+					<div id="station-title"><br></div>
 					<audio id="audio-player" autoplay >
 						<source id="audio-source" src="{{.Url}}" type="audio/mpeg">
 					</audio>
@@ -43,17 +43,16 @@
 						id="form-chat-input"
 						placeholder="Leave a message..."/>
 					</form>
-					<div id="chatmessages">
-						<div class="chatmessage" ></br></div>
-						<div class="chatmessage" ></br></div>
-						<div class="chatmessage" ></br></div>
-						<div class="chatmessage" ></br></div>
-						<div class="chatmessage" ></br></div>
-						<div class="chatmessage" ></br></div>
-						<div class="chatmessage" ></br></div>
-						<div class="chatmessage" ></br></div>
-						<div class="chatmessage" ></br></div>
-						<div class="chatmessage" ></br></div>
+					<div id="chatmessages" hx-swap-oob="afterbegin">
+						{{range $m := .Messages}}
+						<div class="chatmessage">
+							{{if eq $m.Text ""}}
+							<span class="userid"></span><br>
+							{{else}}
+							<span class="userid">{{$m.User}}</span>{{$m.Text}}
+							{{end}}
+						</div>
+						{{end}}
 					</div>
 				</div>
 

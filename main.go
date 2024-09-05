@@ -12,17 +12,15 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	// "sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/gin-gonic/gin"
-	// "github.com/gorilla/websocket"
-	"github.com/olahol/melody"
 	"math/rand"
 
-	// "github.com/gin-contrib/pprof"
+	"github.com/gin-gonic/gin"
+	"github.com/olahol/melody"
 	"gopkg.in/ini.v1"
+
+	// "github.com/gin-contrib/pprof"
 	// _ "net/http/pprof"
 )
 
@@ -31,7 +29,9 @@ var (
 	address       string
 	stationsFile  string
 	proxyStations bool = false
+	messages      messageBuffer
 )
+
 
 func init() {
 
@@ -46,6 +46,8 @@ func init() {
 	if address == "" || stationsFile == "" {
 		log.Fatal("Set environment variables RADIO_ADDRESS and RADIO_STATIONFILE")
 	}
+
+	messages = messageBuffer{}
 
 	proxyStations, _ = strconv.ParseBool(os.Getenv("RADIO_PROXY_STATIONS"))
 
@@ -97,7 +99,12 @@ func main() {
 		sUrl = fmt.Sprintf("/station/0")
 	}
 
-	router.GET("/", func(c *gin.Context) { c.HTML(http.StatusOK, "index.html", gin.H{"Url": sUrl}) })
+	router.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", gin.H{
+			"Url":      sUrl,
+			"Messages": messages.Get(),
+		})
+	})
 
 	if proxyStations {
 		router.GET("/station/:index", handleRadioStations)
@@ -234,6 +241,8 @@ func handlerWsMessage(s *melody.Session, msg []byte) {
 			if err != nil {
 				return
 			}
+
+			messages.Add(getSessionID(s), wsMsg.Message)
 
 			m.Broadcast(tData)
 		}
