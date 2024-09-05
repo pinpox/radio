@@ -32,6 +32,13 @@ footer {
 a {
 	color: var(--color);
 }
+.stationurl {
+	text-decoration: none;
+}
+
+.stationurl:hover {
+    text-decoration: underline;
+}
 
 .meta-container {
 	padding-top: 10px;
