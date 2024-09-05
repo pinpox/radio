@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"io"
 	"io/fs"
@@ -26,9 +27,10 @@ import (
 )
 
 var (
-	Stations     RadioStations
-	address      string
-	stationsFile string
+	Stations      RadioStations
+	address       string
+	stationsFile  string
+	proxyStations bool = false
 )
 
 func init() {
@@ -44,6 +46,8 @@ func init() {
 	if address == "" || stationsFile == "" {
 		log.Fatal("Set environment variables RADIO_ADDRESS and RADIO_STATIONFILE")
 	}
+
+	proxyStations, _ = strconv.ParseBool(os.Getenv("RADIO_PROXY_STATIONS"))
 
 	inidata, err := ini.Load(stationsFile)
 	if err != nil {
@@ -87,8 +91,17 @@ func main() {
 	}
 	router.StaticFS("/static", http.FS(staticFS))
 
-	router.GET("/", func(c *gin.Context) { c.HTML(http.StatusOK, "index.html", gin.H{}) })
-	router.GET("/station/:index", handleRadioStations)
+	sUrl := Stations[0].Url
+
+	if proxyStations {
+		sUrl = fmt.Sprintf("/station/0")
+	}
+
+	router.GET("/", func(c *gin.Context) { c.HTML(http.StatusOK, "index.html", gin.H{"Url": sUrl}) })
+
+	if proxyStations {
+		router.GET("/station/:index", handleRadioStations)
+	}
 
 	router.GET("/ws", func(c *gin.Context) {
 		m.HandleRequest(c.Writer, c.Request)
@@ -228,8 +241,14 @@ func handlerWsMessage(s *melody.Session, msg []byte) {
 		log.Println("Unhandled message:", wsMsg, string(msg), "with action", wsMsg.Action)
 	}
 
+	sUrl := Stations[station].Url
+
+	if proxyStations {
+		sUrl = fmt.Sprintf("/station/%v", station)
+	}
+
 	if err := sendTemplateWebsocket(s, "player.html",
-		gin.H{"Url": station}); err != nil {
+		gin.H{"Url": sUrl}); err != nil {
 		log.Println(err)
 	}
 }
