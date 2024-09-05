@@ -18,7 +18,7 @@ func (m *messageBuffer) Add(userID int, message string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.messages[m.firstMessageIndex].User = usernames[userID]
+	m.messages[m.firstMessageIndex].User = usernames[userID%len(usernames)]
 	m.messages[m.firstMessageIndex].Text = message
 	m.firstMessageIndex = (m.firstMessageIndex + 1) % 10
 
