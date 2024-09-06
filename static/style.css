@@ -37,7 +37,7 @@ a {
 }
 
 .stationurl:hover {
-    text-decoration: underline;
+	text-decoration: underline;
 }
 
 .meta-container {
@@ -127,6 +127,15 @@ button:active {
 	margin-left: auto;
 	margin-right: auto;
 	padding-bottom: 35px;
+}
+
+.newsbox {
+	max-width: 500px;
+	display: block;
+	margin-left: auto;
+	margin-right: auto;
+	margin-top: 0;
+	margin-bottom: 0;
 }
 
 .mainbox {
@@ -219,3 +228,41 @@ input::placeholder {
 .chatmessage:nth-child(1n+10) { visibility: hidden;}
 
 
+
+#active-listeners {
+	font-style: italic;
+	opacity: 0.7;
+}
+
+
+.marquee {
+	overflow: hidden;
+	position: relative;
+	height: 50px;
+	width: 100%;
+	/* Full width of its parent */
+	white-space: nowrap;
+}
+
+.marquee p {
+	position: absolute;
+	width: auto;
+	height: 100%;
+	margin: 0;
+	line-height: 50px;
+	text-align: center;
+	/* Start off the right edge */
+	transform: translateX(100%);
+	/* Animate to the left */
+	animation: scroll-left 20s linear infinite;
+}
+
+@keyframes scroll-left {
+	0% {
+		transform: translateX(100%);
+	}
+
+	100% {
+		transform: translateX(-100%);
+	}
+}

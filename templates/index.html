@@ -13,6 +13,7 @@
 	</head>
 		<body id="ws-container" hx-ext="ws" ws-connect="/ws">
 			<h1>0cx Radio</h1>
+			<!--<h1>░▒▓█ 0cx RADIO █▓▒░</h1>-->
 			<div class="mainbox">
 				<div id="status"></div>
 
@@ -34,29 +35,35 @@
 				</div>
 
 				<input type="range" class="slider" id="volume-slider" min="0" max="1" step="0.05" value="1" >
+
+				<div id="active-listeners"><br></div>
+
 			</div>
 
-				<div class="chatbox">
-					<form id="form-chat" ws-send hx-vals='{"action": "chat"}' >
-						<input name="message" autofocus class="input-chat"
-						autocomplete="off"
-						id="form-chat-input"
-						placeholder="Leave a message..."/>
-					</form>
+
+			<div class="chatbox">
+				<form id="form-chat" ws-send hx-vals='{"action": "chat"}' >
+					<input name="message" autofocus class="input-chat"
+					autocomplete="off"
+					id="form-chat-input"
+					placeholder="Leave a message..."/>
+				</form>
 					<div id="chatmessages" hx-swap-oob="afterbegin">
 						{{range $m := .Messages}}
 						<div class="chatmessage">
 							{{if eq $m.Text ""}}
 							<span class="userid"></span><br>
 							{{else}}
-							<span class="userid">{{$m.User}}</span>{{$m.Text}}
+							<span class="userid">{{$m.User}} </span>{{$m.Text}}
 							{{end}}
 						</div>
 						{{end}}
 					</div>
-				</div>
 
-				<script src="static/script.js" defer></script>
+				<!--<div class="marquee"> <p>{{.News}}</p> </div>-->
+			</div>
+
+			<script src="static/script.js" defer></script>
 		</body>
 		<footer>
 			<p>

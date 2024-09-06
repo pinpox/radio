@@ -9,20 +9,22 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
 	"sync/atomic"
 	"time"
-	"math/rand"
 
 	"github.com/gin-gonic/gin"
 	"github.com/olahol/melody"
 	"gopkg.in/ini.v1"
-
 	// "github.com/gin-contrib/pprof"
 	// _ "net/http/pprof"
 )
+
+//go:embed static templates
+var f embed.FS
 
 var (
 	Stations      RadioStations
@@ -30,8 +32,10 @@ var (
 	stationsFile  string
 	proxyStations bool = false
 	messages      messageBuffer
+	templ         *template.Template
+	idCounter     atomic.Int64
+	m             *melody.Melody
 )
-
 
 func init() {
 
@@ -63,15 +67,6 @@ func init() {
 	}
 }
 
-//go:embed static templates
-var f embed.FS
-
-var templ *template.Template
-
-var idCounter atomic.Int64
-
-var m *melody.Melody
-
 func main() {
 
 	var err error
@@ -84,7 +79,6 @@ func main() {
 	router.SetHTMLTemplate(templ)
 
 	// pprof.Register(router)
-
 	// m.Config.MaxMessageSize = 256
 
 	staticFS, err := fs.Sub(f, "static")
@@ -103,6 +97,7 @@ func main() {
 		c.HTML(http.StatusOK, "index.html", gin.H{
 			"Url":      sUrl,
 			"Messages": messages.Get(),
+			// "News": "Currently no news. This is only a test message",
 		})
 	})
 
@@ -118,11 +113,8 @@ func main() {
 
 	m.HandleConnect(func(s *melody.Session) {
 		id := idCounter.Add(1)
-
 		s.Set("id", id)
 		s.Set("station", 0)
-
-		// s.Write([]byte(fmt.Sprintf("iam %d", id)))
 	})
 
 	go func() {
@@ -132,7 +124,12 @@ func main() {
 
 				v.Update()
 
-				tData, err := renderTemplate("metadata.html", v)
+				tData, err := renderTemplate("metadata.html", gin.H{
+					"Url":          v.Url,
+					"StationName":  v.StationName,
+					"StationTitle": v.StationTitle,
+					"NumListeners": m.Len(),
+				})
 
 				if err != nil {
 					continue
@@ -145,13 +142,9 @@ func main() {
 						return (getSessionStation(s) == k)
 					},
 				)
-
-				//TODO set and check updated time or use tick
-
 			}
 			time.Sleep(3 * time.Second)
 		}
-
 	}()
 
 	err = router.Run(address)
