@@ -75,7 +75,10 @@ func main() {
 
 	router := gin.Default()
 
-	templ = template.Must(template.New("").ParseFS(f, "templates/*"))
+	templ = template.Must(template.New("").Funcs(template.FuncMap{
+		"add": func(a, b int) int { return a + b },
+		"mod": func(a, b int) int { return a % b },
+	}).ParseFS(f, "templates/*"))
 	router.SetHTMLTemplate(templ)
 
 	// pprof.Register(router)
@@ -105,9 +108,11 @@ func main() {
 		}
 
 		c.HTML(http.StatusOK, "index.html", gin.H{
-			"Url":      sUrl,
-			"Messages": messages.Get(),
-			"Station":  stationIndex,
+			"Url":            sUrl,
+			"Messages":       messages.Get(),
+			"Station":        stationIndex,
+			"Stations":       Stations,
+			"CurrentStation": stationIndex,
 			// "News": "Currently no news. This is only a test message",
 		})
 	})
