@@ -11,35 +11,42 @@
 		<link rel="icon" href="static/parrot.gif" type="image/gif" >
 		<link rel="stylesheet" href="static/style.css">
 	</head>
-		<body id="ws-container" hx-ext="ws" ws-connect="/ws">
+		<body id="ws-container" hx-ext="ws" ws-connect="/ws?station={{.Station}}">
 			<h1>0cx Radio</h1>
 			<!--<h1>░▒▓█ 0cx RADIO █▓▒░</h1>-->
-			<div class="mainbox">
-				<div id="status"></div>
-
-				<div class="meta-container">
-					<div id="station-name"><br></div>
-					<div id="station-title"><br></div>
-					<audio id="audio-player" autoplay >
-						<source id="audio-source" src="{{.Url}}" type="audio/mpeg">
-					</audio>
-				</div>
-				<div class="buttoncontainer">
-					<button id="button-ws-prev" ws-send hx-vals='{"action": "previous"}'>
-						Previous<br>Station
-					</button>
-					<button id="play-pause-button">Play</button>
-					<button id="button-ws-next" ws-send hx-vals='{"action": "next"}'>
-						Next<br>Station
-					</button>
+			<div class="player-container">
+				<div class="station-links-left">
+					{{range $i, $s := .Stations}}
+					<a href="?station={{add $i 1}}">[ {{$s.StationName}} ]</a><br>
+					{{end}}
 				</div>
 
-				<input type="range" class="slider" id="volume-slider" min="0" max="1" step="0.01" value="1" >
+				<div class="mainbox">
+					<div id="status"></div>
 
-				<div id="active-listeners"><br></div>
+					<div class="meta-container">
+						<div id="station-name"><br></div>
+						<div id="station-title"><br></div>
+						<audio id="audio-player" autoplay >
+							<source id="audio-source" src="{{.Url}}" type="audio/mpeg">
+						</audio>
+					</div>
+					<div class="buttoncontainer">
+						<button id="button-ws-prev" ws-send hx-vals='{"action": "previous"}'>
+							Previous<br>Station
+						</button>
+						<button id="play-pause-button">Play</button>
+						<button id="button-ws-next" ws-send hx-vals='{"action": "next"}'>
+							Next<br>Station
+						</button>
+					</div>
 
+					<input type="range" class="slider" id="volume-slider" min="0" max="1" step="0.01" value="1" >
+
+					<div id="active-listeners"><br></div>
+
+				</div>
 			</div>
-
 
 			<div class="chatbox">
 				<form id="form-chat" ws-send hx-vals='{"action": "chat"}' >

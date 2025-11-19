@@ -75,7 +75,10 @@ func main() {
 
 	router := gin.Default()
 
-	templ = template.Must(template.New("").ParseFS(f, "templates/*"))
+	templ = template.Must(template.New("").Funcs(template.FuncMap{
+		"add": func(a, b int) int { return a + b },
+		"mod": func(a, b int) int { return a % b },
+	}).ParseFS(f, "templates/*"))
 	router.SetHTMLTemplate(templ)
 
 	// pprof.Register(router)
@@ -87,16 +90,29 @@ func main() {
 	}
 	router.StaticFS("/static", http.FS(staticFS))
 
-	sUrl := Stations[0].Url
-
-	if proxyStations {
-		sUrl = fmt.Sprintf("/station/0")
-	}
-
 	router.GET("/", func(c *gin.Context) {
+		// Parse station parameter from URL
+		stationIndex := 0
+		if stationParam := c.Query("station"); stationParam != "" {
+			if parsed, err := strconv.Atoi(stationParam); err == nil {
+				// Convert from 1-based to 0-based index and validate
+				if parsed >= 1 && parsed <= len(Stations) {
+					stationIndex = parsed - 1
+				}
+			}
+		}
+
+		sUrl := Stations[stationIndex].Url
+		if proxyStations {
+			sUrl = fmt.Sprintf("/station/%d", stationIndex)
+		}
+
 		c.HTML(http.StatusOK, "index.html", gin.H{
-			"Url":      sUrl,
-			"Messages": messages.Get(),
+			"Url":            sUrl,
+			"Messages":       messages.Get(),
+			"Station":        stationIndex,
+			"Stations":       Stations,
+			"CurrentStation": stationIndex,
 			// "News": "Currently no news. This is only a test message",
 		})
 	})
@@ -114,7 +130,21 @@ func main() {
 	m.HandleConnect(func(s *melody.Session) {
 		id := idCounter.Add(1)
 		s.Set("id", id)
-		s.Set("station", 0)
+
+		// Parse station parameter from query string
+		stationIndex := 0
+		if req := s.Request; req != nil {
+			if stationParam := req.URL.Query().Get("station"); stationParam != "" {
+				if parsed, err := strconv.Atoi(stationParam); err == nil {
+					// Validate station index (already 0-based from template)
+					if parsed >= 0 && parsed < len(Stations) {
+						stationIndex = parsed
+					}
+				}
+			}
+		}
+
+		s.Set("station", stationIndex)
 	})
 
 	go func() {
