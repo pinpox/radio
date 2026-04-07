@@ -67,26 +67,42 @@ wsContainer.addEventListener('htmx:wsAfterMessage', event => {
 
 // Media Session API: surfaces playback metadata and controls to the OS
 // (Android lock screen, Bluetooth car head units, headset buttons, etc.).
-const stationNameEl = document.querySelector('#station-name');
-const stationTitleEl = document.querySelector('#station-title');
+const mediaArtwork = [
+	{ src: new URL('/static/icon-192.png', location.href).href, sizes: '192x192', type: 'image/png' },
+	{ src: new URL('/static/icon-512.png', location.href).href, sizes: '512x512', type: 'image/png' },
+];
 
 function updateMediaSessionMetadata() {
 	if (!('mediaSession' in navigator)) return;
 
+	// Re-query each call: htmx hx-swap-oob *replaces* the elements with
+	// matching IDs, so any cached references would point at detached nodes
+	// and return empty text after the first WS update.
+	const stationNameEl = document.querySelector('#station-name');
+	const stationTitleEl = document.querySelector('#station-title');
+	if (!stationNameEl || !stationTitleEl) return;
+
 	// #station-name is rendered as "[Name]" inside an <a>; strip the brackets.
 	const rawName = (stationNameEl.innerText || '').trim();
 	const name = rawName.replace(/^\[/, '').replace(/\]$/, '');
-	const title = (stationTitleEl.innerText || '').trim();
+	const rawTitle = (stationTitleEl.innerText || '').trim();
 
-	navigator.mediaSession.metadata = new MediaMetadata({
-		title: title || name || '0cx Radio',
-		artist: name || '0cx Radio',
-		album: '0cx Radio',
-		artwork: [
-			{ src: '/static/icon-192.png', sizes: '192x192', type: 'image/png' },
-			{ src: '/static/icon-512.png', sizes: '512x512', type: 'image/png' },
-		],
-	});
+	const title = rawTitle || name || '0cx Radio';
+	const artist = name || '0cx Radio';
+
+	if (!navigator.mediaSession.metadata) {
+		navigator.mediaSession.metadata = new MediaMetadata({
+			title,
+			artist,
+			album: '0cx Radio',
+			artwork: mediaArtwork,
+		});
+		return;
+	}
+
+	const md = navigator.mediaSession.metadata;
+	if (md.title !== title) md.title = title;
+	if (md.artist !== artist) md.artist = artist;
 }
 
 if ('mediaSession' in navigator) {
@@ -105,6 +121,7 @@ if ('mediaSession' in navigator) {
 
 	player.addEventListener('play', () => {
 		navigator.mediaSession.playbackState = 'playing';
+		updateMediaSessionMetadata();
 	});
 	player.addEventListener('pause', () => {
 		navigator.mediaSession.playbackState = 'paused';
