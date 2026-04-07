@@ -87,6 +87,15 @@ func main() {
 	}
 	router.StaticFS("/static", http.FS(staticFS))
 
+	// Serve the service worker and manifest from the site root so the
+	// service worker's default scope covers the whole app.
+	router.GET("/sw.js", func(c *gin.Context) {
+		c.FileFromFS("sw.js", http.FS(staticFS))
+	})
+	router.GET("/manifest.webmanifest", func(c *gin.Context) {
+		c.FileFromFS("manifest.webmanifest", http.FS(staticFS))
+	})
+
 	sUrl := Stations[0].Url
 
 	if proxyStations {

@@ -1,3 +1,12 @@
+// Register the service worker so the app is installable as a PWA.
+if ('serviceWorker' in navigator) {
+	window.addEventListener('load', () => {
+		navigator.serviceWorker.register('/sw.js').catch(err => {
+			console.warn('Service worker registration failed:', err);
+		});
+	});
+}
+
 const status = document.querySelector('#status');
 
 // Htmx:wsConnecting
@@ -55,6 +64,73 @@ wsContainer.addEventListener('htmx:wsAfterMessage', event => {
 		n.remove();
 	}
 });
+
+// Media Session API: surfaces playback metadata and controls to the OS
+// (Android lock screen, Bluetooth car head units, headset buttons, etc.).
+const mediaArtwork = [
+	{ src: new URL('/static/icon-192.png', location.href).href, sizes: '192x192', type: 'image/png' },
+	{ src: new URL('/static/icon-512.png', location.href).href, sizes: '512x512', type: 'image/png' },
+];
+
+function updateMediaSessionMetadata() {
+	if (!('mediaSession' in navigator)) return;
+
+	// Re-query each call: htmx hx-swap-oob *replaces* the elements with
+	// matching IDs, so any cached references would point at detached nodes
+	// and return empty text after the first WS update.
+	const stationNameEl = document.querySelector('#station-name');
+	const stationTitleEl = document.querySelector('#station-title');
+	if (!stationNameEl || !stationTitleEl) return;
+
+	// #station-name is rendered as "[Name]" inside an <a>; strip the brackets.
+	const rawName = (stationNameEl.innerText || '').trim();
+	const name = rawName.replace(/^\[/, '').replace(/\]$/, '');
+	const rawTitle = (stationTitleEl.innerText || '').trim();
+
+	const title = rawTitle || name || '0cx Radio';
+	const artist = name || '0cx Radio';
+
+	if (!navigator.mediaSession.metadata) {
+		navigator.mediaSession.metadata = new MediaMetadata({
+			title,
+			artist,
+			album: '0cx Radio',
+			artwork: mediaArtwork,
+		});
+		return;
+	}
+
+	const md = navigator.mediaSession.metadata;
+	if (md.title !== title) md.title = title;
+	if (md.artist !== artist) md.artist = artist;
+}
+
+if ('mediaSession' in navigator) {
+	navigator.mediaSession.setActionHandler('play', () => {
+		document.querySelector('#play-pause-button').click();
+	});
+	navigator.mediaSession.setActionHandler('pause', () => {
+		document.querySelector('#play-pause-button').click();
+	});
+	navigator.mediaSession.setActionHandler('previoustrack', () => {
+		document.querySelector('#button-ws-prev').click();
+	});
+	navigator.mediaSession.setActionHandler('nexttrack', () => {
+		document.querySelector('#button-ws-next').click();
+	});
+
+	player.addEventListener('play', () => {
+		navigator.mediaSession.playbackState = 'playing';
+		updateMediaSessionMetadata();
+	});
+	player.addEventListener('pause', () => {
+		navigator.mediaSession.playbackState = 'paused';
+	});
+
+	// Refresh metadata whenever the server pushes new station info.
+	wsContainer.addEventListener('htmx:wsAfterMessage', updateMediaSessionMetadata);
+	updateMediaSessionMetadata();
+}
 
 // Volume slider
 const volume = document.querySelector('#volume-slider');
