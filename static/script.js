@@ -65,6 +65,56 @@ wsContainer.addEventListener('htmx:wsAfterMessage', event => {
 	}
 });
 
+// Media Session API: surfaces playback metadata and controls to the OS
+// (Android lock screen, Bluetooth car head units, headset buttons, etc.).
+const stationNameEl = document.querySelector('#station-name');
+const stationTitleEl = document.querySelector('#station-title');
+
+function updateMediaSessionMetadata() {
+	if (!('mediaSession' in navigator)) return;
+
+	// #station-name is rendered as "[Name]" inside an <a>; strip the brackets.
+	const rawName = (stationNameEl.innerText || '').trim();
+	const name = rawName.replace(/^\[/, '').replace(/\]$/, '');
+	const title = (stationTitleEl.innerText || '').trim();
+
+	navigator.mediaSession.metadata = new MediaMetadata({
+		title: title || name || '0cx Radio',
+		artist: name || '0cx Radio',
+		album: '0cx Radio',
+		artwork: [
+			{ src: '/static/icon-192.png', sizes: '192x192', type: 'image/png' },
+			{ src: '/static/icon-512.png', sizes: '512x512', type: 'image/png' },
+		],
+	});
+}
+
+if ('mediaSession' in navigator) {
+	navigator.mediaSession.setActionHandler('play', () => {
+		document.querySelector('#play-pause-button').click();
+	});
+	navigator.mediaSession.setActionHandler('pause', () => {
+		document.querySelector('#play-pause-button').click();
+	});
+	navigator.mediaSession.setActionHandler('previoustrack', () => {
+		document.querySelector('#button-ws-prev').click();
+	});
+	navigator.mediaSession.setActionHandler('nexttrack', () => {
+		document.querySelector('#button-ws-next').click();
+	});
+
+	player.addEventListener('play', () => {
+		navigator.mediaSession.playbackState = 'playing';
+	});
+	player.addEventListener('pause', () => {
+		navigator.mediaSession.playbackState = 'paused';
+	});
+
+	// Refresh metadata whenever the server pushes new station info.
+	wsContainer.addEventListener('htmx:wsAfterMessage', updateMediaSessionMetadata);
+	updateMediaSessionMetadata();
+}
+
 // Volume slider
 const volume = document.querySelector('#volume-slider');
 volume.addEventListener('change', e => {
